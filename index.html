@@ -52,6 +52,10 @@
   #midInfo{ text-align:center; }
   #scoreVal{ font-size:20px; }
   #timeVal{ font-size:14px; opacity:.9; }
+  #buffBadge{
+    margin-top:4px; font-size:12px; background:rgba(224,184,75,.22); border:1px solid #e0b84baa;
+    border-radius:8px; padding:2px 8px; display:none; color:#ffe6a8;
+  }
   #muteBtn{
     pointer-events:auto; background:rgba(0,0,0,.35); border:1px solid #ffffff55;
     color:var(--parchment); border-radius:8px; padding:4px 8px; font-size:16px;
@@ -71,25 +75,22 @@
     transition:transform .05s linear;
   }
 
-  /* ---------- FIRE BUTTONS (broadside) ---------- */
-  #fireWrap{
-    position:absolute; right:16px; bottom:20px; z-index:6;
-    display:flex; flex-direction:column; gap:10px; align-items:flex-end;
-  }
-  .fireBtn{
-    position:relative; width:76px; height:76px; border-radius:50%;
+  /* ---------- FIRE BUTTON (양현 동시 발사) ---------- */
+  #fireBtn{
+    position:absolute; right:20px; bottom:26px; z-index:6;
+    width:92px; height:92px; border-radius:50%;
     background:radial-gradient(circle at 35% 30%, #e2793f, var(--red) 70%);
-    border:3px solid #ffe6b8cc; color:#fff3dc; font-size:11px; font-weight:bold;
+    border:3px solid #ffe6b8cc; color:#fff3dc; font-size:14px; font-weight:bold;
     display:flex; align-items:center; justify-content:center; flex-direction:column;
     line-height:1.15; touch-action:manipulation; overflow:hidden;
   }
-  .fireBtn .cd{
+  #fireBtn .cd{
     position:absolute; inset:0; border-radius:50%;
     background:conic-gradient(rgba(5,10,15,.72) calc(var(--p,0)*360deg), transparent 0);
     pointer-events:none;
   }
-  .fireBtn span{ position:relative; z-index:1; }
-  .fireBtn:active{ transform:scale(0.93); }
+  #fireBtn span{ position:relative; z-index:1; }
+  #fireBtn:active{ transform:scale(0.93); }
 
   #hint{
     position:absolute; left:0; right:0; bottom:150px; text-align:center; z-index:4;
@@ -139,17 +140,15 @@
       <div id="midInfo">
         <div id="scoreVal">0</div>
         <div id="timeVal">90</div>
+        <div id="buffBadge">⚡ 강화포 0초</div>
       </div>
       <button id="muteBtn">🔊</button>
     </div>
 
-    <div id="hint">조이스틱으로 항해, 좌현/우현 버튼으로 함포 발사!</div>
+    <div id="hint">조이스틱으로 항해, 발사 버튼으로 양현 함포 동시 발사!</div>
 
     <div id="joyBase"><div id="joyKnob"></div></div>
-    <div id="fireWrap">
-      <button class="fireBtn" id="fireLeft"><div class="cd" id="cdLeft"></div><span>◀<br>좌현포</span></button>
-      <button class="fireBtn" id="fireRight"><div class="cd" id="cdRight"></div><span>우현포<br>▶</span></button>
-    </div>
+    <button id="fireBtn"><div class="cd" id="fireCd"></div><span>🔥<br>발사</span></button>
 
     <div id="startScreen" class="overlay">
       <div class="card">
@@ -158,9 +157,10 @@
         <p style="opacity:.8; text-align:center">- 대항해시대 자유 해상 포격전 -</p>
         <p>
         · 왼쪽 <b>조이스틱</b>으로 함선을 조종합니다. 위로 밀면 가속, 좌우로 밀면 방향타(회전)입니다. 배는 관성이 있어 즉시 멈추거나 꺾이지 않습니다.<br>
-        · 대포는 <b>측면(현측)</b>에만 있습니다. 오른쪽 <b>좌현포 / 우현포</b> 버튼으로 배의 옆구리가 적을 향할 때 발사하세요.<br>
-        · 적선과 부딪히면(램) 서로 피해를 입습니다.<br>
-        · 데스크톱: WASD/방향키 조종, Q(좌현)·E(우현) 발사.
+        · 오른쪽 <b>발사</b> 버튼을 누르면 <b>양쪽 현측 대포가 동시에</b> 발사됩니다.<br>
+        · 바다에 떠 있는 <b>화약통</b>을 주우면 일정 시간 발사 수와 포탄 속도가 강화됩니다.<br>
+        · 적선과 부딪히면(램) 서로 피해를 입습니다. 우측 상단 미니맵으로 넓은 바다에서 적의 위치를 확인하세요.<br>
+        · 데스크톱: WASD/방향키 조종, Space(또는 E) 발사.
         </p>
         <div class="stat" style="text-align:center">최고 점수: <b id="bestScoreStart">0</b></div>
         <div style="text-align:center"><button id="startBtn" class="btn">▶ 항해 시작</button></div>
@@ -234,6 +234,7 @@
   function sfxDamage(){ beep(110,0.3,'sawtooth',0.18); }
   function sfxGameOver(){ beep(220,0.25,'sawtooth',0.15); beep(160,0.3,'sawtooth',0.15,0.2); beep(100,0.5,'sawtooth',0.15,0.4); }
   function sfxVictory(){ [523,659,784,1047].forEach(function(f,i){ beep(f,0.22,'square',0.13,i*0.12); }); }
+  function sfxPowerup(){ [660,880,1100].forEach(function(f,i){ beep(f,0.14,'square',0.12,i*0.07); }); }
 
   var muteBtn = document.getElementById('muteBtn');
   function refreshMuteBtn(){ muteBtn.textContent = muted ? '🔇' : '🔊'; }
@@ -244,18 +245,17 @@
     refreshMuteBtn();
   });
 
-  /* ============== 함선 사양 (실제 범선 조작감을 위한 물리 파라미터) ============== */
-  // maxSpeed: 최대속도(px/s), turnRate: 최대 선회각속도(rad/s),
-  // accel: 가속 반응성, inertia: 속도벡터가 목표(선수 방향)를 따라가는 관성 반응성 (작을수록 미끄러지듯 밀림)
+  /* ============== 함선 사양 (실제 범선 조작감을 위한 물리 파라미터) ==============
+     이동 속도는 이전 버전 대비 50%로 하향 조정됨 (maxSpeed) */
   var SHIP_SPECS = {
     player:  { length:82, beam:28, masts:2, guns:3, hullColor:'#2f5f8a', deckColor:'#3f7aad', sailColor:'#f2e6c9', flagColor:'#3f6fb0',
-               maxSpeed:170, turnRate:1.7, accel:1.1, inertia:2.3, maxHp:6, collisionR:26 },
+               maxSpeed:85, turnRate:1.7, accel:1.1, inertia:2.3, maxHp:6, collisionR:26 },
     sloop:   { length:60, beam:22, masts:1, guns:2, hullColor:'#7a2f2f', deckColor:'#8f3d3d', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:195, turnRate:2.3, accel:1.5, inertia:3.1, maxHp:2, collisionR:19, score:60 },
+               maxSpeed:98, turnRate:2.3, accel:1.5, inertia:3.1, maxHp:2, collisionR:19, score:60 },
     frigate: { length:86, beam:29, masts:2, guns:3, hullColor:'#5c2323', deckColor:'#71302f', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:150, turnRate:1.4, accel:0.95, inertia:2.0, maxHp:4, collisionR:26, score:120 },
+               maxSpeed:75, turnRate:1.4, accel:0.95, inertia:2.0, maxHp:4, collisionR:26, score:120 },
     galleon: { length:114, beam:40, masts:3, guns:4, hullColor:'#40201c', deckColor:'#552a22', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:105, turnRate:0.85, accel:0.6, inertia:1.25, maxHp:8, collisionR:34, score:220 }
+               maxSpeed:53, turnRate:0.85, accel:0.6, inertia:1.25, maxHp:8, collisionR:34, score:220 }
   };
 
   /* ============== 함선 스프라이트 생성 (코드로 직접 그리는 2D 이미지) ==============
@@ -271,8 +271,6 @@
     off.width = cw; off.height = ch;
     var c = off.getContext('2d');
     c.translate(cw/2, ch/2);
-
-    // 항적으로 인해 배 중심을 살짝 앞쪽에 두기 위한 기준점은 그대로 중앙(0,0) 사용
 
     function hullOutline(){
       var hb = B/2, N = 22, pts = [];
@@ -290,7 +288,6 @@
       c.closePath();
     }
 
-    // 그림자(물 위 배 그림자)
     c.save();
     c.translate(3,5);
     hullOutline();
@@ -298,7 +295,6 @@
     c.fill();
     c.restore();
 
-    // 선체
     hullOutline();
     var grad = c.createLinearGradient(0,-B/2,0,B/2);
     grad.addColorStop(0, shade(spec.hullColor, 22));
@@ -310,7 +306,6 @@
     c.strokeStyle = 'rgba(0,0,0,0.55)';
     c.stroke();
 
-    // 갑판(선체보다 살짝 안쪽)
     c.save();
     c.scale(0.86, 0.72);
     hullOutline();
@@ -318,7 +313,6 @@
     c.fill();
     c.restore();
 
-    // 갑판 중앙 선
     c.strokeStyle = 'rgba(0,0,0,0.25)';
     c.lineWidth = 1;
     c.beginPath();
@@ -327,7 +321,6 @@
     c.stroke();
     c.setLineDash([]);
 
-    // 함포 (현측 포문)
     var hb = B/2;
     for(var side=-1; side<=1; side+=2){
       for(var g=0; g<spec.guns; g++){
@@ -337,7 +330,6 @@
         var gy = side * Math.max(hb*0.5, wAt*0.92);
         c.fillStyle = 'rgba(20,14,10,0.85)';
         c.fillRect(gx-2.2, gy-1.6, 4.4, 3.2);
-        // 포신
         c.strokeStyle = 'rgba(15,12,10,0.9)';
         c.lineWidth = 1.6;
         c.beginPath();
@@ -347,14 +339,12 @@
       }
     }
 
-    // 돛대 + 돛 (탑다운 시점: 돛대를 가로지르는 타원형 돛)
     for(var m=0; m<spec.masts; m++){
       var mt = spec.masts===1 ? 0.06 : (0.34 - m*(0.62/(spec.masts-1)));
       var mx = mt * L;
       var sailW = B * (m===0 && spec.masts>1 ? 1.35 : 1.55);
       var sailL = L * (spec.masts===1 ? 0.30 : 0.19);
 
-      // 돛 그림자
       c.save();
       c.translate(mx, 0);
       c.beginPath();
@@ -363,7 +353,6 @@
       c.fill();
       c.restore();
 
-      // 돛 본체
       c.save();
       c.translate(mx, 0);
       var sgrad = c.createLinearGradient(0,-sailW/2,0,sailW/2);
@@ -379,14 +368,12 @@
       c.stroke();
       c.restore();
 
-      // 돛대(중심점)
       c.fillStyle = '#2a1a10';
       c.beginPath();
       c.arc(mx, 0, 2.2, 0, Math.PI*2);
       c.fill();
     }
 
-    // 이물(선수) 사장(bowsprit)
     c.strokeStyle = shade(spec.hullColor,-30);
     c.lineWidth = 2.4;
     c.beginPath();
@@ -394,7 +381,6 @@
     c.lineTo(L/2 + 11, 0);
     c.stroke();
 
-    // 깃발(선미)
     c.fillStyle = spec.flagColor;
     c.beginPath();
     c.moveTo(-L/2, -2);
@@ -418,21 +404,63 @@
     return spriteCache[type];
   }
 
+  // 화약통(강화 아이템) 스프라이트
+  var powderSprite = null;
+  function getPowderSprite(){
+    if(powderSprite) return powderSprite;
+    var s = 34, off = document.createElement('canvas');
+    off.width = s; off.height = s;
+    var c = off.getContext('2d');
+    c.translate(s/2, s/2);
+    c.beginPath(); c.ellipse(0, s*0.34, s*0.30, s*0.10, 0,0,Math.PI*2);
+    c.fillStyle='rgba(0,0,0,0.28)'; c.fill();
+    c.beginPath();
+    c.moveTo(-s*0.26, -s*0.30);
+    c.quadraticCurveTo(-s*0.36, 0, -s*0.26, s*0.30);
+    c.quadraticCurveTo(0, s*0.40, s*0.26, s*0.30);
+    c.quadraticCurveTo(s*0.36, 0, s*0.26, -s*0.30);
+    c.quadraticCurveTo(0, -s*0.40, -s*0.26, -s*0.30);
+    c.closePath();
+    var g = c.createLinearGradient(-s*0.3,0,s*0.3,0);
+    g.addColorStop(0, '#7a4f2b'); g.addColorStop(0.5,'#a5713e'); g.addColorStop(1,'#6b431f');
+    c.fillStyle = g; c.fill();
+    c.strokeStyle='rgba(0,0,0,0.4)'; c.lineWidth=1.4; c.stroke();
+    c.strokeStyle='rgba(20,12,6,0.55)'; c.lineWidth=2.2;
+    [-s*0.18, 0, s*0.18].forEach(function(yy){
+      c.beginPath(); c.moveTo(-s*0.27,yy); c.lineTo(s*0.27,yy); c.stroke();
+    });
+    c.fillStyle='#ffd873'; c.font='bold '+(s*0.42)+'px sans-serif';
+    c.textAlign='center'; c.textBaseline='middle';
+    c.fillText('⚡', 0, -1);
+    powderSprite = { img: off, w:s, h:s };
+    return powderSprite;
+  }
+
   /* ============== 게임 상수 ============== */
   var TIME_LIMIT = 90;
   var BULLET_SPEED = 380;
   var BULLET_RANGE = 340;
   var CANNON_COOLDOWN = 1.5;
   var INVULN_TIME = 0.8;
-  var AGGRO_RANGE = 420;
-  var ENGAGE_DIST = 190;
+  var AGGRO_RANGE = 680;
+  var ENGAGE_DIST = 250;
+  var WORLD_SCALE = 3; // 맵 가로/세로 각 3배 => 면적 9배
+
+  var BUFF_DURATION = 14;
+  var BUFF_EXTRA_GUNS = 2;
+  var BUFF_BULLET_SPEED_MUL = 1.4;
+  var PICKUP_MAX = 2;
+  var PICKUP_INTERVAL = 13;
+  var PICKUP_LIFETIME = 22;
 
   /* ============== 게임 상태 ============== */
   var state = 'ready'; // ready | playing | over
-  var player, bullets, enemies, particles, wakes;
-  var score = 0, timeLeft = TIME_LIMIT, elapsed = 0, spawnTimer = 0;
+  var player, bullets, enemies, particles, wakes, pickups;
+  var score = 0, timeLeft = TIME_LIMIT, elapsed = 0, spawnTimer = 0, pickupTimer = 0;
   var shake = 0;
   var waveT = 0;
+  var camera = {x:0,y:0};
+  var WORLD_W = 1000, WORLD_H = 1000;
 
   function bestScore(){ return parseInt(localStorage.getItem('cg_best')||'0',10); }
   function setBest(v){ localStorage.setItem('cg_best', String(v)); }
@@ -443,20 +471,24 @@
       type:type, spec:spec, x:x, y:y, heading:heading||0,
       vel:{x:0,y:0}, speed:0, angularVelocity:0,
       hp:spec.maxHp, maxHp:spec.maxHp, invuln:0,
-      cdLeft:0, cdRight:0, alive:true,
-      // AI 전용
+      cd:0, alive:true,
       aiState:'patrol', wanderHeading: Math.random()*Math.PI*2, wanderTimer: 1+Math.random()*2,
       orbitDir: Math.random()<0.5?1:-1
     };
   }
 
   function resetGame(){
-    player = newShip('player', W*0.5, H*0.5, -Math.PI/2);
+    WORLD_W = Math.max(900, W) * WORLD_SCALE;
+    WORLD_H = Math.max(600, H) * WORLD_SCALE;
+    player = newShip('player', WORLD_W*0.5, WORLD_H*0.5, -Math.PI/2);
+    player.buffTime = 0;
+    camera.x = player.x; camera.y = player.y;
     bullets = [];
     enemies = [];
     particles = [];
     wakes = [];
-    score = 0; timeLeft = TIME_LIMIT; elapsed = 0; spawnTimer = 0.6;
+    pickups = [];
+    score = 0; timeLeft = TIME_LIMIT; elapsed = 0; spawnTimer = 1.0; pickupTimer = 4;
   }
 
   /* ============== 입력: 가상 조이스틱 ============== */
@@ -500,8 +532,7 @@
     keys[e.key.toLowerCase()] = true;
     if(e.key===' ') e.preventDefault();
     if(state==='playing'){
-      if(e.key.toLowerCase()==='q') fireBroadside(player,'left');
-      if(e.key.toLowerCase()==='e') fireBroadside(player,'right');
+      if(e.key===' ' || e.key.toLowerCase()==='e') fireBothSides(player);
     }
   });
   window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
@@ -513,22 +544,17 @@
     return joyVec;
   }
 
-  /* ============== 발사 버튼 ============== */
-  var fireLeftBtn = document.getElementById('fireLeft');
-  var fireRightBtn = document.getElementById('fireRight');
-  var cdLeftEl = document.getElementById('cdLeft');
-  var cdRightEl = document.getElementById('cdRight');
-  fireLeftBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); fireBroadside(player,'left'); });
-  fireRightBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); fireBroadside(player,'right'); });
+  /* ============== 발사 버튼 (양현 동시 발사) ============== */
+  var fireBtn = document.getElementById('fireBtn');
+  var fireCdEl = document.getElementById('fireCd');
+  fireBtn.addEventListener('pointerdown', function(e){ e.preventDefault(); fireBothSides(player); });
 
-  function fireBroadside(ship, side){
-    if(state !== 'playing' || !ship.alive) return;
-    var cdKey = side==='left' ? 'cdLeft' : 'cdRight';
-    if(ship[cdKey] > 0) return;
-    ship[cdKey] = CANNON_COOLDOWN;
+  function fireSide(ship, side){
     var dir = side==='left' ? -1 : 1;
     var perpAngle = ship.heading + dir*Math.PI/2;
-    var n = ship.spec.guns;
+    var buffed = (ship===player && player.buffTime>0);
+    var n = ship.spec.guns + (buffed ? BUFF_EXTRA_GUNS : 0);
+    var bSpeed = BULLET_SPEED * (buffed ? BUFF_BULLET_SPEED_MUL : 1);
     for(var i=0;i<n;i++){
       var t = n===1 ? 0.5 : i/(n-1);
       var alongOffset = (t-0.5) * ship.spec.length * 0.66;
@@ -537,13 +563,25 @@
       var spread = (Math.random()-0.5)*0.12;
       bullets.push({
         x:ox, y:oy,
-        vx: Math.cos(perpAngle+spread)*BULLET_SPEED,
-        vy: Math.sin(perpAngle+spread)*BULLET_SPEED,
+        vx: Math.cos(perpAngle+spread)*bSpeed,
+        vy: Math.sin(perpAngle+spread)*bSpeed,
         dist:0, owner: ship
       });
     }
+  }
+  function fireBothSides(ship){
+    if(state !== 'playing' || !ship.alive || ship.cd > 0) return;
+    ship.cd = CANNON_COOLDOWN;
+    fireSide(ship,'left');
+    fireSide(ship,'right');
     if(ship === player) sfxFire();
     shake = Math.max(shake, ship===player?3:1.5);
+  }
+  function fireOneSide(ship, side){
+    if(state !== 'playing' || !ship.alive || ship.cd > 0) return;
+    ship.cd = CANNON_COOLDOWN;
+    fireSide(ship, side);
+    shake = Math.max(shake, 1.5);
   }
 
   /* ============== 함선 물리 (실제 범선 움직임 모사: 관성 + 타각 + 가속 지연) ============== */
@@ -553,7 +591,7 @@
     throttle = Math.max(-1, Math.min(1, throttle));
 
     var speedRatio = Math.abs(ship.speed) / spec.maxSpeed;
-    var turnEff = 0.35 + Math.min(1, speedRatio*1.15) * 0.85; // 저속에서는 타각 효율이 떨어짐(실제 범선처럼)
+    var turnEff = 0.35 + Math.min(1, speedRatio*1.15) * 0.85;
     var targetAngVel = rudder * spec.turnRate * turnEff;
     ship.angularVelocity += (targetAngVel - ship.angularVelocity) * Math.min(1, dt*4.5);
     ship.heading += ship.angularVelocity * dt;
@@ -569,9 +607,8 @@
     ship.x += ship.vel.x*dt;
     ship.y += ship.vel.y*dt;
 
-    // 항적 (배 뒤로 물거품)
     var sp = Math.hypot(ship.vel.x, ship.vel.y);
-    if(sp > 15 && Math.random() < dt*10){
+    if(sp > 12 && Math.random() < dt*10){
       var back = ship.heading + Math.PI;
       wakes.push({
         x: ship.x + Math.cos(back)*spec.length*0.42,
@@ -580,12 +617,11 @@
       });
     }
 
-    // 화면 경계 클램프 (부드럽게 밀어냄)
     var margin = spec.collisionR + 6;
     if(ship.x < margin){ ship.x = margin; ship.vel.x = Math.max(0, ship.vel.x); }
-    if(ship.x > W-margin){ ship.x = W-margin; ship.vel.x = Math.min(0, ship.vel.x); }
-    if(ship.y < margin+56){ ship.y = margin+56; ship.vel.y = Math.max(0, ship.vel.y); }
-    if(ship.y > H-margin){ ship.y = H-margin; ship.vel.y = Math.min(0, ship.vel.y); }
+    if(ship.x > WORLD_W-margin){ ship.x = WORLD_W-margin; ship.vel.x = Math.min(0, ship.vel.x); }
+    if(ship.y < margin){ ship.y = margin; ship.vel.y = Math.max(0, ship.vel.y); }
+    if(ship.y > WORLD_H-margin){ ship.y = WORLD_H-margin; ship.vel.y = Math.min(0, ship.vel.y); }
   }
 
   function angleDiff(a,b){
@@ -632,12 +668,11 @@
       var d2 = angleDiff(e.heading, desiredHeading);
       rudder = Math.max(-1, Math.min(1, d2*1.3));
 
-      // 현측이 플레이어를 향하면 발사
       var relAngle = angleDiff(e.heading, angToPlayer);
       if(dist < BULLET_RANGE*0.92){
         if(Math.abs(relAngle - Math.PI/2) < 0.45 || Math.abs(relAngle + Math.PI/2) < 0.45){
           var side = relAngle > 0 ? 'right' : 'left';
-          fireBroadside(e, side);
+          fireOneSide(e, side);
         }
       }
     }
@@ -645,7 +680,7 @@
     updateShipPhysics(e, rudder, throttle, dt);
   }
 
-  /* ============== 스폰 ============== */
+  /* ============== 스폰 (적 등장 속도 완화 + 동시 등장 수 제한) ============== */
   function pickEnemyType(prog){
     var pool = ['sloop','sloop','sloop','frigate','frigate'];
     if(prog > 0.25) pool.push('frigate');
@@ -653,21 +688,33 @@
     if(prog > 0.75) pool.push('galleon');
     return pool[Math.floor(Math.random()*pool.length)];
   }
+  function maxConcurrentEnemies(prog){
+    return 2 + Math.floor(prog*4); // 2 → 6
+  }
   function spawnEnemy(){
     var type = pickEnemyType(Math.min(1, elapsed/TIME_LIMIT));
-    var margin = 70;
-    var side = Math.floor(Math.random()*4);
-    var x,y;
-    if(side===0){ x=margin; y=Math.random()*H; }
-    else if(side===1){ x=W-margin; y=Math.random()*H; }
-    else if(side===2){ x=Math.random()*W; y=margin+56; }
-    else { x=Math.random()*W; y=H-margin; }
-    // 플레이어와 너무 가까우면 재배치
-    if(Math.hypot(x-player.x,y-player.y) < 160){
-      x = W - x; y = H - y;
-    }
+    var ref = Math.max(W,H);
+    var dist = ref*0.8 + Math.random()*ref*0.9;
+    var ang = Math.random()*Math.PI*2;
+    var x = player.x + Math.cos(ang)*dist;
+    var y = player.y + Math.sin(ang)*dist;
+    var m = 80;
+    x = Math.max(m, Math.min(WORLD_W-m, x));
+    y = Math.max(m, Math.min(WORLD_H-m, y));
     var heading = Math.atan2(player.y-y, player.x-x);
     enemies.push(newShip(type, x, y, heading));
+  }
+
+  function spawnPickup(){
+    var ref = Math.max(W,H);
+    var dist = ref*0.3 + Math.random()*ref*0.9;
+    var ang = Math.random()*Math.PI*2;
+    var x = player.x + Math.cos(ang)*dist;
+    var y = player.y + Math.sin(ang)*dist;
+    var m = 60;
+    x = Math.max(m, Math.min(WORLD_W-m, x));
+    y = Math.max(m, Math.min(WORLD_H-m, y));
+    pickups.push({x:x,y:y,age:0,bob:Math.random()*Math.PI*2});
   }
 
   /* ============== 파티클 ============== */
@@ -690,27 +737,48 @@
     waveT += dt;
     if(shake > 0) shake = Math.max(0, shake - dt*8);
 
-    if(player.cdLeft>0) player.cdLeft -= dt;
-    if(player.cdRight>0) player.cdRight -= dt;
+    if(player.cd>0) player.cd -= dt;
     if(player.invuln>0) player.invuln -= dt;
+    if(player.buffTime>0) player.buffTime = Math.max(0, player.buffTime-dt);
 
     var iv = getInputVector();
     updateShipPhysics(player, iv.x, -iv.y, dt);
 
-    // 스폰
+    camera.x += (player.x - camera.x) * Math.min(1, dt*3.2);
+    camera.y += (player.y - camera.y) * Math.min(1, dt*3.2);
+
+    // 적 스폰
+    var prog = Math.min(1, elapsed/TIME_LIMIT);
     spawnTimer -= dt;
-    if(spawnTimer <= 0 && enemies.length < 5){
+    if(spawnTimer <= 0 && enemies.length < maxConcurrentEnemies(prog)){
       spawnEnemy();
-      var prog = Math.min(1, elapsed/TIME_LIMIT);
-      spawnTimer = Math.max(1.4, 3.4 - prog*1.8) + Math.random()*0.6;
+      spawnTimer = Math.max(2.2, 5.0 - prog*2.0) + Math.random()*1.0;
+    }
+
+    // 아이템 스폰
+    pickupTimer -= dt;
+    if(pickupTimer <= 0 && pickups.length < PICKUP_MAX){
+      spawnPickup();
+      pickupTimer = PICKUP_INTERVAL + Math.random()*4;
+    }
+    for(var pi=pickups.length-1; pi>=0; pi--){
+      var pu = pickups[pi];
+      pu.age += dt;
+      if(pu.age > PICKUP_LIFETIME){ pickups.splice(pi,1); continue; }
+      var pd = Math.hypot(pu.x-player.x, pu.y-player.y);
+      if(pd < player.spec.collisionR + 15){
+        pickups.splice(pi,1);
+        player.buffTime = BUFF_DURATION;
+        explode(pu.x,pu.y,'#ffd873',18,160);
+        sfxPowerup();
+      }
     }
 
     // 적 갱신
     for(var k=enemies.length-1;k>=0;k--){
       var e = enemies[k];
       if(!e.alive){ enemies.splice(k,1); continue; }
-      if(e.cdLeft>0) e.cdLeft -= dt;
-      if(e.cdRight>0) e.cdRight -= dt;
+      if(e.cd>0) e.cd -= dt;
       if(e.invuln>0) e.invuln -= dt;
       updateEnemyAI(e, dt);
     }
@@ -751,7 +819,7 @@
         }
       }
 
-      if(hit || b.dist > BULLET_RANGE || b.x<-20||b.x>W+20||b.y<-20||b.y>H+20){
+      if(hit || b.dist > BULLET_RANGE){
         bullets.splice(i,1);
       }
     }
@@ -775,7 +843,6 @@
         }
         e2.hp -= 1;
         if(e2.hp<=0){ e2.alive=false; score+=Math.floor(e2.spec.score*0.6); explode(e2.x,e2.y,'#ffa552',20,200); sfxSink(); }
-        var relVx = player.vel.x-e2.vel.x, relVy = player.vel.y-e2.vel.y;
         player.vel.x -= nx*40; player.vel.y -= ny*40;
         e2.vel.x += nx*40; e2.vel.y += ny*40;
       }
@@ -795,8 +862,7 @@
     }
 
     // 쿨다운 UI
-    cdLeftEl.style.setProperty('--p', Math.max(0, player.cdLeft/CANNON_COOLDOWN));
-    cdRightEl.style.setProperty('--p', Math.max(0, player.cdRight/CANNON_COOLDOWN));
+    fireCdEl.style.setProperty('--p', Math.max(0, player.cd/CANNON_COOLDOWN));
 
     // 종료 조건
     if(player.hp <= 0){
@@ -810,9 +876,13 @@
   }
 
   /* ============== 그리기 ============== */
-  function drawHPBar(x,y,w,r,hp,maxHp){
+  function worldToScreen(x,y){
+    return { x: x - camera.x + W/2, y: y - camera.y + H/2 };
+  }
+
+  function drawHPBar(sx,sy,w,r,hp,maxHp){
     var bw = w, bh = 5;
-    var bx = x-bw/2, by = y-r-14;
+    var bx = sx-bw/2, by = sy-r-14;
     ctx.fillStyle = '#00000088';
     ctx.fillRect(bx,by,bw,bh);
     ctx.fillStyle = hp/maxHp > 0.4 ? '#5fd66b' : '#e05b3f';
@@ -823,13 +893,15 @@
 
   function drawShipEntity(ship, flash){
     var sp = getSprite(ship.type);
+    var s = worldToScreen(ship.x, ship.y);
+    if(s.x < -80 || s.x > W+80 || s.y < -80 || s.y > H+80) return;
     ctx.save();
-    ctx.translate(ship.x, ship.y);
+    ctx.translate(s.x, s.y);
     ctx.rotate(ship.heading);
     if(flash) ctx.globalAlpha = 0.45 + 0.55*Math.sin(elapsed*32);
     ctx.drawImage(sp.img, -sp.w/2, -sp.h/2, sp.w, sp.h);
     ctx.restore();
-    drawHPBar(ship.x, ship.y, ship.spec.length*0.6, ship.spec.collisionR, ship.hp, ship.maxHp);
+    drawHPBar(s.x, s.y, ship.spec.length*0.6, ship.spec.collisionR, ship.hp, ship.maxHp);
   }
 
   function drawOcean(){
@@ -842,15 +914,83 @@
     ctx.save();
     ctx.globalAlpha = 0.14;
     ctx.strokeStyle = '#bfe4ff';
-    for(var row=0; row<Math.ceil(H/70)+1; row++){
-      var yy = row * 70 + 20;
+    var top = camera.y - H/2, left = camera.x - W/2;
+    var rowStart = Math.floor(top/70)*70;
+    for(var wy = rowStart; wy < top+H+70; wy += 70){
+      var sy = wy - camera.y + H/2;
       ctx.beginPath();
-      for(var x=0;x<=W;x+=16){
-        var yOff = Math.sin((x*0.02)+(waveT*1.3)+row) * 5;
-        if(x===0) ctx.moveTo(x, yy+yOff); else ctx.lineTo(x, yy+yOff);
+      var first = true;
+      for(var wx = left-16; wx <= left+W+16; wx += 16){
+        var sx = wx - camera.x + W/2;
+        var yOff = Math.sin((wx*0.02)+(waveT*1.3)+(wy*0.01)) * 5;
+        if(first){ ctx.moveTo(sx, sy+yOff); first=false; } else ctx.lineTo(sx, sy+yOff);
       }
       ctx.stroke();
     }
+    ctx.restore();
+
+    // 세계 경계
+    var edgeTL = worldToScreen(0,0), edgeBR = worldToScreen(WORLD_W, WORLD_H);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,120,90,0.55)';
+    ctx.lineWidth = 4;
+    ctx.setLineDash([14,10]);
+    ctx.strokeRect(edgeTL.x, edgeTL.y, edgeBR.x-edgeTL.x, edgeBR.y-edgeTL.y);
+    ctx.restore();
+  }
+
+  function drawPickups(){
+    var sp = getPowderSprite();
+    pickups.forEach(function(pu){
+      var s = worldToScreen(pu.x, pu.y);
+      if(s.x < -40 || s.x > W+40 || s.y < -40 || s.y > H+40) return;
+      var bob = Math.sin(elapsed*3 + pu.bob) * 4;
+      var warn = pu.age > PICKUP_LIFETIME-5 ? (Math.sin(elapsed*14)>0?0.35:1) : 1;
+      ctx.save();
+      ctx.globalAlpha = warn;
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y+14, 14, 5, 0,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fill();
+      ctx.drawImage(sp.img, s.x-sp.w/2, s.y-sp.h/2+bob, sp.w, sp.h);
+      ctx.restore();
+    });
+  }
+
+  function drawMinimap(){
+    var mw=118, mh=88, mx = W-mw-14, my=56;
+    ctx.save();
+    ctx.globalAlpha = 0.92;
+    ctx.fillStyle='rgba(6,20,32,0.55)';
+    ctx.strokeStyle='rgba(224,184,75,0.85)';
+    ctx.lineWidth=1.5;
+    if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(mx,my,mw,mh,8); ctx.fill(); ctx.stroke(); }
+    else { ctx.fillRect(mx,my,mw,mh); ctx.strokeRect(mx,my,mw,mh); }
+
+    var pad = 5;
+    var s = Math.min((mw-pad*2)/WORLD_W, (mh-pad*2)/WORLD_H);
+    var ox = mx + pad + (mw-pad*2-WORLD_W*s)/2;
+    var oy = my + pad + (mh-pad*2-WORLD_H*s)/2;
+
+    ctx.strokeStyle='rgba(255,255,255,0.55)'; ctx.lineWidth=1;
+    ctx.strokeRect(ox+(camera.x-W/2)*s, oy+(camera.y-H/2)*s, W*s, H*s);
+
+    pickups.forEach(function(pu){
+      ctx.fillStyle='#ffd873';
+      ctx.beginPath(); ctx.arc(ox+pu.x*s, oy+pu.y*s, 2, 0, Math.PI*2); ctx.fill();
+    });
+    enemies.forEach(function(e){
+      if(!e.alive) return;
+      ctx.fillStyle='#e05b3f';
+      ctx.beginPath(); ctx.arc(ox+e.x*s, oy+e.y*s, 2.3, 0, Math.PI*2); ctx.fill();
+    });
+
+    ctx.save();
+    ctx.translate(ox+player.x*s, oy+player.y*s);
+    ctx.rotate(player.heading);
+    ctx.fillStyle='#bfe4ff';
+    ctx.beginPath(); ctx.moveTo(4,0); ctx.lineTo(-3,-3); ctx.lineTo(-3,3); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
     ctx.restore();
   }
 
@@ -861,50 +1001,56 @@
     }
     drawOcean();
 
-    // 항적
     wakes.forEach(function(wk){
+      var s = worldToScreen(wk.x, wk.y);
+      if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20) return;
       var a = 1 - wk.age/wk.life;
       ctx.beginPath();
       ctx.fillStyle = 'rgba(220,240,255,'+(a*0.5)+')';
-      ctx.arc(wk.x, wk.y, wk.r + (wk.age/wk.life)*4, 0, Math.PI*2);
+      ctx.arc(s.x, s.y, wk.r + (wk.age/wk.life)*4, 0, Math.PI*2);
       ctx.fill();
     });
 
-    // 적선
+    drawPickups();
+
     enemies.forEach(function(e){ if(e.alive) drawShipEntity(e,false); });
 
-    // 플레이어
     if(state !== 'ready' && player.alive){
       drawShipEntity(player, player.invuln>0);
     }
 
-    // 총알
     bullets.forEach(function(b){
+      var s = worldToScreen(b.x, b.y);
+      if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20) return;
       ctx.beginPath();
       ctx.fillStyle = b.owner===player ? '#3a2a1a' : '#d94f3a';
-      ctx.arc(b.x,b.y,4.4,0,Math.PI*2);
+      ctx.arc(s.x,s.y,4.4,0,Math.PI*2);
       ctx.fill();
       ctx.strokeStyle = '#00000055'; ctx.lineWidth=1; ctx.stroke();
     });
 
-    // 파티클
     particles.forEach(function(p){
+      var s = worldToScreen(p.x, p.y);
+      if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20) return;
       var a = 1 - p.age/p.life;
       ctx.globalAlpha = Math.max(0,a);
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.arc(s.x,s.y,p.r,0,Math.PI*2);
       ctx.fill();
       ctx.globalAlpha = 1;
     });
 
     ctx.restore();
+
+    if(state === 'playing') drawMinimap();
   }
 
   /* ============== HUD ============== */
   var heartsEl = document.getElementById('hearts');
   var scoreEl = document.getElementById('scoreVal');
   var timeEl = document.getElementById('timeVal');
+  var buffBadgeEl = document.getElementById('buffBadge');
   function updateHUD(){
     var hp = state==='ready' ? SHIP_SPECS.player.maxHp : Math.max(0,player.hp);
     var maxHp = SHIP_SPECS.player.maxHp;
@@ -915,6 +1061,12 @@
     heartsEl.innerHTML = html;
     scoreEl.textContent = score + ' 점';
     timeEl.textContent = '⏳ ' + Math.ceil(timeLeft) + '초';
+    if(player.buffTime > 0){
+      buffBadgeEl.style.display = 'inline-block';
+      buffBadgeEl.textContent = '⚡ 강화포 ' + Math.ceil(player.buffTime) + '초';
+    } else {
+      buffBadgeEl.style.display = 'none';
+    }
   }
 
   /* ============== 루프 ============== */
