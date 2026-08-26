@@ -268,150 +268,110 @@
                maxSpeed:79, turnRate:0.85, accel:0.85, inertia:1.6, maxHp:8, collisionR:34, score:220 }
   };
 
-  /* ============== 함선 스프라이트 생성 (코드로 직접 그리는 2D 이미지) ==============
-     외부 이미지 호스팅(kenney.nl, opengameart.org, itch.io 등)은 이 환경의 네트워크 정책상
-     접근이 차단되어 있어, 대신 캔버스로 탑다운 범선 실루엣을 오프스크린에 1회 렌더링해
-     "이미지"로 캐싱한 뒤 매 프레임 drawImage로 그립니다. (선수는 +x 방향 기준) */
-  var spriteCache = {};
-  function buildShipSprite(spec){
-    var L = spec.length, B = spec.beam;
-    var pad = 22;
-    var cw = Math.ceil(L + pad*2), ch = Math.ceil(B*2.6 + pad);
-    var off = document.createElement('canvas');
-    off.width = cw; off.height = ch;
-    var c = off.getContext('2d');
-    c.translate(cw/2, ch/2);
-
-    function hullOutline(){
-      var hb = B/2, N = 22, pts = [];
-      for(var i=0;i<=N;i++){
-        var t = i/N, w;
-        if(t < 0.42){ w = hb * Math.pow(t/0.42, 0.62); }
-        else { var t2 = (t-0.42)/0.58; w = hb*(1-0.52*t2); if(w < hb*0.40) w = hb*0.40; }
-        var x = L/2 - t*L;
-        pts.push([x, -w]);
-      }
-      c.beginPath();
-      c.moveTo(pts[0][0], pts[0][1]);
-      for(var i=1;i<pts.length;i++) c.lineTo(pts[i][0], pts[i][1]);
-      for(var i=pts.length-1;i>=0;i--) c.lineTo(pts[i][0], -pts[i][1]);
-      c.closePath();
-    }
-
-    c.save();
-    c.translate(3,5);
-    hullOutline();
-    c.fillStyle = 'rgba(0,0,0,0.25)';
-    c.fill();
-    c.restore();
-
-    hullOutline();
-    var grad = c.createLinearGradient(0,-B/2,0,B/2);
-    grad.addColorStop(0, shade(spec.hullColor, 22));
-    grad.addColorStop(0.5, spec.hullColor);
-    grad.addColorStop(1, shade(spec.hullColor, -28));
-    c.fillStyle = grad;
-    c.fill();
-    c.lineWidth = 2;
-    c.strokeStyle = 'rgba(0,0,0,0.55)';
-    c.stroke();
-
-    c.save();
-    c.scale(0.86, 0.72);
-    hullOutline();
-    c.fillStyle = spec.deckColor;
-    c.fill();
-    c.restore();
-
-    c.strokeStyle = 'rgba(0,0,0,0.25)';
-    c.lineWidth = 1;
-    c.beginPath();
-    c.moveTo(L*0.4, 0); c.lineTo(-L*0.42, 0);
-    c.setLineDash([4,3]);
-    c.stroke();
-    c.setLineDash([]);
-
-    var hb = B/2;
-    for(var side=-1; side<=1; side+=2){
-      for(var g=0; g<spec.guns; g++){
-        var t = 0.18 + (g/(Math.max(1,spec.guns-1)||1)) * 0.6;
-        var gx = L/2 - t*L;
-        var wAt = hb * (t<0.42 ? Math.pow(t/0.42,0.62) : (1-0.52*((t-0.42)/0.58)));
-        var gy = side * Math.max(hb*0.5, wAt*0.92);
-        c.fillStyle = 'rgba(20,14,10,0.85)';
-        c.fillRect(gx-2.2, gy-1.6, 4.4, 3.2);
-        c.strokeStyle = 'rgba(15,12,10,0.9)';
-        c.lineWidth = 1.6;
-        c.beginPath();
-        c.moveTo(gx, gy);
-        c.lineTo(gx, gy + side*5.5);
-        c.stroke();
-      }
-    }
-
-    for(var m=0; m<spec.masts; m++){
-      var mt = spec.masts===1 ? 0.06 : (0.34 - m*(0.62/(spec.masts-1)));
-      var mx = mt * L;
-      var sailW = B * (m===0 && spec.masts>1 ? 1.35 : 1.55);
-      var sailL = L * (spec.masts===1 ? 0.30 : 0.19);
-
-      c.save();
-      c.translate(mx, 0);
-      c.beginPath();
-      c.ellipse(0.5, 0.5, sailL/2, sailW/2, 0, 0, Math.PI*2);
-      c.fillStyle = 'rgba(0,0,0,0.18)';
-      c.fill();
-      c.restore();
-
-      c.save();
-      c.translate(mx, 0);
-      var sgrad = c.createLinearGradient(0,-sailW/2,0,sailW/2);
-      sgrad.addColorStop(0, shade(spec.sailColor, -18));
-      sgrad.addColorStop(0.5, spec.sailColor);
-      sgrad.addColorStop(1, shade(spec.sailColor, -18));
-      c.beginPath();
-      c.ellipse(0,0, sailL/2, sailW/2, 0, 0, Math.PI*2);
-      c.fillStyle = sgrad;
-      c.fill();
-      c.strokeStyle = 'rgba(0,0,0,0.25)';
-      c.lineWidth = 1;
-      c.stroke();
-      c.restore();
-
-      c.fillStyle = '#2a1a10';
-      c.beginPath();
-      c.arc(mx, 0, 2.2, 0, Math.PI*2);
-      c.fill();
-    }
-
-    c.strokeStyle = shade(spec.hullColor,-30);
-    c.lineWidth = 2.4;
-    c.beginPath();
-    c.moveTo(L/2 - 1, 0);
-    c.lineTo(L/2 + 11, 0);
-    c.stroke();
-
-    c.fillStyle = spec.flagColor;
-    c.beginPath();
-    c.moveTo(-L/2, -2);
-    c.lineTo(-L/2 - 12, -6);
-    c.lineTo(-L/2, -10);
-    c.closePath();
-    c.fill();
-    c.strokeStyle='#0004'; c.lineWidth=1; c.stroke();
-
-    return { img: off, w: cw, h: ch };
-  }
-  function shade(hex, amt){
-    var n = parseInt(hex.slice(1),16);
-    var r = Math.min(255,Math.max(0, (n>>16) + amt));
-    var g = Math.min(255,Math.max(0, ((n>>8)&255) + amt));
-    var b = Math.min(255,Math.max(0, (n&255) + amt));
-    return 'rgb('+r+','+g+','+b+')';
-  }
+  /* ============== 함선 스프라이트 (제작하신 SVG 함선 이미지) ==============
+     player_ship.svg / enemy_small.svg / enemy_medium.svg / enemy_large.svg 를
+     그대로 내장(inline)해 외부 파일 없이 단일 HTML로 동작하도록 했습니다.
+     원본 그림은 뱃머리가 위쪽(-y)을 향하는 구도라, 그리기 단계에서
+     heading + 90도 로 보정해 좌우 이동 방향과 맞춥니다. */
+  var SHIP_SVG_MARKUP = {
+    player: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -10 100 160" width="100" height="160">
+  <ellipse cx="50" cy="75" rx="30" ry="65" fill="#0a2a3a" opacity="0.15"/>
+  <path d="M50,6 C62,20 68,35 66,55 L64,120 Q64,138 50,144 Q36,138 36,120 L34,55 C32,35 38,20 50,6 Z"
+        fill="#3b6e78" stroke="#1f4650" stroke-width="2"/>
+  <path d="M50,10 C58,22 62,35 61,52 L59,118 Q59,132 50,138"
+        fill="none" stroke="#8fd0d6" stroke-width="1.5" opacity="0.6"/>
+  <line x1="40" y1="40" x2="60" y2="40" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
+  <line x1="39" y1="70" x2="61" y2="70" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
+  <line x1="38" y1="100" x2="62" y2="100" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
+  <circle cx="35" cy="50" r="2.5" fill="#222"/><circle cx="65" cy="50" r="2.5" fill="#222"/>
+  <circle cx="34" cy="72" r="2.5" fill="#222"/><circle cx="66" cy="72" r="2.5" fill="#222"/>
+  <circle cx="34" cy="94" r="2.5" fill="#222"/><circle cx="66" cy="94" r="2.5" fill="#222"/>
+  <g><path d="M 26,60 L 74,60 Q 68,67 74,74 L 26,74 Q 32,67 26,60 Z" fill="#e8dcc0" stroke="#a89568" stroke-width="1.5"/>
+    <circle cx="50" cy="67" r="2.5" fill="#5a4a2f"/></g>
+  <g><path d="M 31,28 L 69,28 Q 64,33.5 69,39 L 31,39 Q 36,33.5 31,28 Z" fill="#f2ead6" stroke="#a89568" stroke-width="1.5"/>
+    <circle cx="50" cy="33.5" r="2" fill="#5a4a2f"/></g>
+  <circle cx="50" cy="12" r="2" fill="#d4af37"/>
+  <path d="M50,4 L50,-6 L60,-2 L50,2 Z" fill="#d4af37"/>
+</svg>`,
+    sloop: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -8 70 108" width="70" height="108">
+  <ellipse cx="35" cy="50" rx="20" ry="42" fill="#3a1a12" opacity="0.15"/>
+  <path d="M35,5 C44,15 48,27 46,40 L45,80 Q45,92 35,96 Q25,92 25,80 L24,40 C22,27 26,15 35,5 Z"
+        fill="#7a4a35" stroke="#4a2a1c" stroke-width="2"/>
+  <path d="M35,9 C41,17 44,27 43,38 L42,78 Q42,88 35,92" fill="none" stroke="#c58e6c" stroke-width="1.2" opacity="0.5"/>
+  <line x1="27" y1="35" x2="43" y2="35" stroke="#4a2a1c" stroke-width="1" opacity="0.5"/>
+  <line x1="26" y1="60" x2="44" y2="60" stroke="#4a2a1c" stroke-width="1" opacity="0.5"/>
+  <circle cx="25" cy="42" r="2" fill="#222"/><circle cx="45" cy="42" r="2" fill="#222"/>
+  <circle cx="24" cy="62" r="2" fill="#222"/><circle cx="46" cy="62" r="2" fill="#222"/>
+  <path d="M 16,38 L 54,38 Q 48,44 54,50 L 16,50 Q 22,44 16,38 Z" fill="#d8c9a3" stroke="#7a6842" stroke-width="1.3"/>
+  <circle cx="35" cy="44" r="2" fill="#4a3a22"/>
+  <path d="M35,3 L35,-5 L43,-1.5 L35,2 Z" fill="#8b2e2e"/>
+</svg>`,
+    frigate: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -10 100 160" width="100" height="160">
+  <ellipse cx="50" cy="75" rx="30" ry="65" fill="#3a1a12" opacity="0.15"/>
+  <path d="M50,6 C62,20 68,35 66,55 L64,120 Q64,138 50,144 Q36,138 36,120 L34,55 C32,35 38,20 50,6 Z"
+        fill="#8a3a2a" stroke="#4a1c12" stroke-width="2"/>
+  <path d="M50,10 C58,22 62,35 61,52 L59,118 Q59,132 50,138" fill="none" stroke="#d69a7c" stroke-width="1.5" opacity="0.5"/>
+  <line x1="40" y1="40" x2="60" y2="40" stroke="#4a1c12" stroke-width="1" opacity="0.5"/>
+  <line x1="39" y1="70" x2="61" y2="70" stroke="#4a1c12" stroke-width="1" opacity="0.5"/>
+  <line x1="38" y1="100" x2="62" y2="100" stroke="#4a1c12" stroke-width="1" opacity="0.5"/>
+  <circle cx="35" cy="50" r="2.5" fill="#222"/><circle cx="65" cy="50" r="2.5" fill="#222"/>
+  <circle cx="34" cy="72" r="2.5" fill="#222"/><circle cx="66" cy="72" r="2.5" fill="#222"/>
+  <circle cx="34" cy="94" r="2.5" fill="#222"/><circle cx="66" cy="94" r="2.5" fill="#222"/>
+  <path d="M 26,60 L 74,60 Q 68,67 74,74 L 26,74 Q 32,67 26,60 Z" fill="#d8c9a3" stroke="#7a6842" stroke-width="1.5"/>
+  <circle cx="50" cy="67" r="2.5" fill="#4a3a22"/>
+  <path d="M 31,28 L 69,28 Q 64,33.5 69,39 L 31,39 Q 36,33.5 31,28 Z" fill="#e0d2ae" stroke="#7a6842" stroke-width="1.5"/>
+  <circle cx="50" cy="33.5" r="2" fill="#4a3a22"/>
+  <circle cx="50" cy="12" r="2" fill="#b0472f"/>
+  <path d="M50,4 L50,-6 L60,-2 L50,2 Z" fill="#8b2e2e"/>
+</svg>`,
+    galleon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -14 140 224" width="140" height="224">
+  <ellipse cx="70" cy="105" rx="42" ry="92" fill="#2a1008" opacity="0.18"/>
+  <path d="M70,8 C86,26 94,48 92,76 L90,168 Q90,194 70,202 Q50,194 50,168 L48,76 C46,48 54,26 70,8 Z"
+        fill="#5c1f1f" stroke="#2a0d0d" stroke-width="2.5"/>
+  <path d="M70,14 C80,30 86,48 84,72 L82,164 Q82,184 70,192" fill="none" stroke="#b06b6b" stroke-width="1.8" opacity="0.5"/>
+  <line x1="55" y1="55" x2="85" y2="55" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
+  <line x1="53" y1="90" x2="87" y2="90" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
+  <line x1="52" y1="125" x2="88" y2="125" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
+  <line x1="52" y1="155" x2="88" y2="155" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
+  <circle cx="49" cy="65" r="3" fill="#111"/><circle cx="91" cy="65" r="3" fill="#111"/>
+  <circle cx="48" cy="90" r="3" fill="#111"/><circle cx="92" cy="90" r="3" fill="#111"/>
+  <circle cx="48" cy="115" r="3" fill="#111"/><circle cx="92" cy="115" r="3" fill="#111"/>
+  <circle cx="49" cy="140" r="3" fill="#111"/><circle cx="91" cy="140" r="3" fill="#111"/>
+  <path d="M 34,120 L 106,120 Q 98,129 106,138 L 34,138 Q 42,129 34,120 Z" fill="#e8dcc0" stroke="#7a6842" stroke-width="1.8"/>
+  <circle cx="70" cy="129" r="3.2" fill="#3a2a12"/>
+  <path d="M 30,78 L 110,78 Q 101,88 110,98 L 30,98 Q 39,88 30,78 Z" fill="#f0e6cc" stroke="#7a6842" stroke-width="1.8"/>
+  <circle cx="70" cy="88" r="3.5" fill="#3a2a12"/>
+  <path d="M 40,42 L 100,42 Q 94,49.5 100,57 L 40,57 Q 46,49.5 40,42 Z" fill="#e0d2ae" stroke="#7a6842" stroke-width="1.6"/>
+  <circle cx="70" cy="49.5" r="3" fill="#3a2a12"/>
+  <circle cx="70" cy="16" r="3" fill="#d4af37"/>
+  <path d="M62,16 L70,4 L78,16 Z" fill="#8a1c1c" stroke="#4a0d0d" stroke-width="1"/>
+  <path d="M70,2 L70,-10 L84,-4 L70,3 Z" fill="#1a1a1a"/>
+</svg>`
+  };
+  // 원본 도안 기준 실제 선체 높이/너비(마진 확장 전)와, 위쪽에 추가된 여백(margin: 깃발 표시용)
+  var SHIP_IMG_META = {
+    player:  { origW:100, origH:150, margin:10 },
+    sloop:   { origW:70,  origH:100, margin:8  },
+    frigate: { origW:100, origH:150, margin:10 },
+    galleon: { origW:140, origH:210, margin:14 }
+  };
+  var shipImages = {};
+  Object.keys(SHIP_SVG_MARKUP).forEach(function(type){
+    var img = new Image();
+    img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SHIP_SVG_MARKUP[type]);
+    shipImages[type] = img;
+  });
   function getSprite(type){
-    if(!spriteCache[type]) spriteCache[type] = buildShipSprite(SHIP_SPECS[type]);
-    return spriteCache[type];
+    var meta = SHIP_IMG_META[type];
+    var scale = SHIP_SPECS[type].length / meta.origH;
+    var dW = scale * meta.origW;
+    var dH = scale * (meta.origH + meta.margin);
+    return {
+      img: shipImages[type],
+      dW: dW, dH: dH,
+      dx: -dW/2,
+      dy: -scale * (meta.origH/2 + meta.margin)
+    };
   }
 
   // 아이템(화약통/구호통) 스프라이트 - 공용 통(barrel) 형태에 색상/기호만 다르게
@@ -942,9 +902,9 @@
     if(s.x < -80 || s.x > W+80 || s.y < -80 || s.y > H+80) return;
     ctx.save();
     ctx.translate(s.x, s.y);
-    ctx.rotate(ship.heading);
+    ctx.rotate(ship.heading + Math.PI/2); // 원본 그림은 뱃머리가 위쪽(-y)을 향하므로 90도 보정
     if(flash) ctx.globalAlpha = 0.45 + 0.55*Math.sin(elapsed*32);
-    ctx.drawImage(sp.img, -sp.w/2, -sp.h/2, sp.w, sp.h);
+    ctx.drawImage(sp.img, sp.dx, sp.dy, sp.dW, sp.dH);
     ctx.restore();
     drawHPBar(s.x, s.y, ship.spec.length*0.6, ship.spec.collisionR, ship.hp, ship.maxHp);
   }
