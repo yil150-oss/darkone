@@ -179,7 +179,7 @@
         <h1 style="text-align:center">함포대전</h1>
         <p style="opacity:.8; text-align:center">- 대항해시대 자유 해상 포격전 -</p>
         <p>
-        · 왼쪽 <b>십자키</b>로 함선을 조종합니다. <b>▲/▼</b>는 속도를 높이거나 낮추고(▼를 계속 누르면 속도가 0 밑으로 내려가 후진합니다), <b>◀/▶</b>는 좌우로 선회합니다. 관성이 있어 즉시 멈추거나 꺾이지 않습니다.<br>
+        · 왼쪽 <b>십자키</b>로 함선을 조종합니다. <b>▲/▼</b>를 누른 동안 속도가 오르내리고(▼를 계속 누르면 0 밑으로 내려가 후진), 버튼에서 손을 떼면 그 속도 그대로 <b>등속 운항</b>합니다. <b>◀/▶</b>는 손을 떼고 있어도 좌우로 선회할 수 있습니다.<br>
         · 오른쪽 <b>발사</b> 버튼을 누르면 <b>양쪽 현측 대포가 동시에</b> 발사됩니다.<br>
         · 바다에 떠 있는 <b>⚡화약통</b>을 주우면 일정 시간 발사 수와 포탄 속도가 강화되고, <b>✚구호통</b>을 주우면 체력이 회복됩니다(구호통은 화약통보다 드물게 나타남).<br>
         · 체력(♥)이 모두 사라지면 목숨을 하나 잃고 그 자리에서 다시 시작합니다. 목숨을 모두 잃으면 게임 오버!<br>
@@ -577,7 +577,7 @@
   }
 
   /* ============== 함선 물리 (실제 범선 움직임 모사: 관성 + 타각 + 가속 지연) ============== */
-  function updateShipPhysics(ship, rudder, throttle, dt){
+  function updateShipPhysics(ship, rudder, throttle, dt, cruise){
     var spec = ship.spec;
     rudder = Math.max(-1, Math.min(1, rudder));
     throttle = Math.max(-1, Math.min(1, throttle));
@@ -588,8 +588,12 @@
     ship.angularVelocity += (targetAngVel - ship.angularVelocity) * Math.min(1, dt*6.5);
     ship.heading += ship.angularVelocity * dt;
 
-    var targetSpeed = throttle >= 0 ? throttle*spec.maxSpeed : throttle*spec.maxSpeed*0.35;
-    ship.speed += (targetSpeed - ship.speed) * Math.min(1, dt*spec.accel);
+    // cruise 모드(플레이어 전용): 상하키를 누르고 있을 때만 속도가 바뀌고,
+    // 손을 떼면 그 속도 그대로 등속운동을 유지합니다(0으로 감속하지 않음).
+    if(throttle !== 0 || !cruise){
+      var targetSpeed = throttle >= 0 ? throttle*spec.maxSpeed : throttle*spec.maxSpeed*0.35;
+      ship.speed += (targetSpeed - ship.speed) * Math.min(1, dt*spec.accel);
+    }
 
     var fwd = { x:Math.cos(ship.heading), y:Math.sin(ship.heading) };
     var desiredVel = { x:fwd.x*ship.speed, y:fwd.y*ship.speed };
@@ -746,7 +750,7 @@
     if(player.buffTime>0) player.buffTime = Math.max(0, player.buffTime-dt);
 
     var rt = getRudderThrottle();
-    updateShipPhysics(player, rt.rudder, rt.throttle, dt);
+    updateShipPhysics(player, rt.rudder, rt.throttle, dt, true);
 
     camera.x += (player.x - camera.x) * Math.min(1, dt*3.2);
     camera.y += (player.y - camera.y) * Math.min(1, dt*3.2);
