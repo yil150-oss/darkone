@@ -156,7 +156,7 @@
       </div>
       <div id="midInfo">
         <div id="scoreVal">0</div>
-        <div id="timeVal">90</div>
+        <div id="timeVal">⏱ 0초 생존</div>
         <div id="buffBadge">⚡ 강화포 0초</div>
       </div>
       <button id="muteBtn">🔊</button>
@@ -183,6 +183,7 @@
         · 오른쪽 <b>발사</b> 버튼을 누르면 <b>양쪽 현측 대포가 동시에</b> 발사됩니다.<br>
         · 바다에 떠 있는 <b>⚡화약통</b>을 주우면 일정 시간 발사 수와 포탄 속도가 강화되고, <b>✚구호통</b>을 주우면 체력이 회복됩니다(구호통은 화약통보다 드물게 나타남).<br>
         · 체력(♥)이 모두 사라지면 목숨을 하나 잃고 그 자리에서 다시 시작합니다. 목숨을 모두 잃으면 게임 오버!<br>
+        · 시간이 지날수록 적선이 더 자주, 더 강하게 몰려옵니다. <b>시간제한은 없으니</b> 목숨이 다할 때까지 최대한 버티며 점수를 쌓아 최고 기록에 도전하세요!<br>
         · 적선과 부딪히면(램) 서로 피해를 입습니다. 우측 상단 미니맵으로 넓은 바다에서 적의 위치를 확인하세요.<br>
         · 데스크톱: WASD/방향키 조종, Space(또는 E) 발사.
         </p>
@@ -197,6 +198,7 @@
         <h2 id="endTitle" style="text-align:center">격침당했습니다...</h2>
         <div class="stat" style="text-align:center">이번 점수: <b id="finalScore">0</b></div>
         <div class="stat" style="text-align:center">최고 점수: <b id="bestScoreEnd">0</b></div>
+        <div class="stat" style="text-align:center">생존 시간: <b id="survivedTime">0초</b></div>
         <div class="ad-slot inline">광고 영역 · AD (전면/네이티브)</div>
         <div style="text-align:center"><button id="retryBtn" class="btn">↻ 다시 하기</button></div>
       </div>
@@ -430,7 +432,7 @@
   }
 
   /* ============== 게임 상수 ============== */
-  var TIME_LIMIT = 90;
+  var DIFFICULTY_RAMP = 60; // 초반 난이도가 이 시간(초) 동안 올라간 뒤에도 서서히 계속 어려워짐
   var BULLET_SPEED = 380;
   var BULLET_RANGE = 340;
   var CANNON_COOLDOWN = 1.5;
@@ -454,7 +456,7 @@
   /* ============== 게임 상태 ============== */
   var state = 'ready'; // ready | playing | over
   var player, bullets, enemies, particles, wakes, pickups;
-  var score = 0, timeLeft = TIME_LIMIT, elapsed = 0, spawnTimer = 0, pickupTimer = 0;
+  var score = 0, elapsed = 0, spawnTimer = 0, pickupTimer = 0;
   var shake = 0;
   var waveT = 0;
   var camera = {x:0,y:0};
@@ -487,7 +489,7 @@
     particles = [];
     wakes = [];
     pickups = [];
-    score = 0; timeLeft = TIME_LIMIT; elapsed = 0; spawnTimer = 1.0; pickupTimer = 4;
+    score = 0; elapsed = 0; spawnTimer = 1.0; pickupTimer = 4;
   }
 
   /* ============== 입력: 십자키(D-pad) ==============
@@ -689,11 +691,12 @@
     if(prog > 0.75) pool.push('galleon');
     return pool[Math.floor(Math.random()*pool.length)];
   }
-  function maxConcurrentEnemies(prog){
-    return 2 + Math.floor(prog*4); // 2 → 6
+  function maxConcurrentEnemies(diff){
+    return Math.min(10, 2 + Math.floor(diff*4)); // 2 → 10, 계속 서서히 증가
   }
   function spawnEnemy(){
-    var type = pickEnemyType(Math.min(1, elapsed/TIME_LIMIT));
+    var diff = elapsed / DIFFICULTY_RAMP;
+    var type = pickEnemyType(Math.min(1, diff));
     var ref = Math.max(W,H);
     var dist = ref*0.8 + Math.random()*ref*0.9;
     var ang = Math.random()*Math.PI*2;
@@ -735,7 +738,6 @@
   /* ============== 업데이트 ============== */
   function update(dt){
     elapsed += dt;
-    timeLeft = Math.max(0, TIME_LIMIT - elapsed);
     waveT += dt;
     if(shake > 0) shake = Math.max(0, shake - dt*8);
 
@@ -749,12 +751,12 @@
     camera.x += (player.x - camera.x) * Math.min(1, dt*3.2);
     camera.y += (player.y - camera.y) * Math.min(1, dt*3.2);
 
-    // 적 스폰
-    var prog = Math.min(1, elapsed/TIME_LIMIT);
+    // 적 스폰 (시간이 지날수록 더 자주, 더 많이 - 상한 없이 서서히 계속 어려워짐)
+    var diff = elapsed / DIFFICULTY_RAMP;
     spawnTimer -= dt;
-    if(spawnTimer <= 0 && enemies.length < maxConcurrentEnemies(prog)){
+    if(spawnTimer <= 0 && enemies.length < maxConcurrentEnemies(diff)){
       spawnEnemy();
-      spawnTimer = Math.max(2.2, 5.0 - prog*2.0) + Math.random()*1.0;
+      spawnTimer = Math.max(1.0, 5.0 - diff*2.0) + Math.random()*0.8;
     }
 
     // 아이템 스폰
@@ -872,17 +874,15 @@
     // 쿨다운 UI
     fireCdEl.style.setProperty('--p', Math.max(0, player.cd/CANNON_COOLDOWN));
 
-    // 종료 조건 / 생명(라이프) 처리
+    // 종료 조건: 목숨을 모두 잃었을 때만 게임 종료 (시간제한 없는 엔드리스 서바이벌)
     if(player.hp <= 0 && player.alive){
       player.lives -= 1;
       if(player.lives > 0){
         respawnPlayer();
       } else {
         player.alive = false;
-        endGame('lose');
+        endGame();
       }
-    } else if(timeLeft <= 0){
-      endGame('win');
     }
 
     updateHUD();
@@ -1082,7 +1082,7 @@
     livesEl.innerHTML = livesHtml;
 
     scoreEl.textContent = score + ' 점';
-    timeEl.textContent = '⏳ ' + Math.ceil(timeLeft) + '초';
+    timeEl.textContent = '⏱ ' + Math.floor(elapsed) + '초 생존';
     if(player.buffTime > 0){
       buffBadgeEl.style.display = 'inline-block';
       buffBadgeEl.textContent = '⚡ 강화포 ' + Math.ceil(player.buffTime) + '초';
@@ -1124,18 +1124,21 @@
     setTimeout(function(){ hint.style.opacity = '0'; }, 3400);
   }
 
-  function endGame(result){
+  function endGame(){
     if(state !== 'playing') return;
     state = 'over';
-    var best = bestScore();
-    if(score > best){ best = score; setBest(best); }
+    var prevBest = bestScore();
+    var isNewBest = score > prevBest;
+    var best = isNewBest ? score : prevBest;
+    if(isNewBest) setBest(best);
 
     document.getElementById('finalScore').textContent = score + ' 점';
     document.getElementById('bestScoreEnd').textContent = best + ' 점';
+    document.getElementById('survivedTime').textContent = Math.floor(elapsed) + '초';
 
-    if(result === 'win'){
+    if(isNewBest && score > 0){
       document.getElementById('endEmoji').textContent = '🏆';
-      document.getElementById('endTitle').textContent = '항해 성공! 무사 귀환';
+      document.getElementById('endTitle').textContent = '신기록 달성!';
       sfxVictory();
     } else {
       document.getElementById('endEmoji').textContent = '💥';
