@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150" width="100" height="150">
+  <!-- 항적(선택적 그림자) -->
+  <ellipse cx="50" cy="75" rx="30" ry="65" fill="#0a2a3a" opacity="0.15"/>
+
+  <!-- 선체 -->
+  <path d="M50,6 
+           C62,20 68,35 66,55
+           L64,120
+           Q64,138 50,144
+           Q36,138 36,120
+           L34,55
+           C32,35 38,20 50,6 Z"
+        fill="#3b6e78" stroke="#1f4650" stroke-width="2"/>
+
+  <!-- 선체 하이라이트 -->
+  <path d="M50,10 C58,22 62,35 61,52 L59,118 Q59,132 50,138"
+        fill="none" stroke="#8fd0d6" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- 갑판 라인 -->
+  <line x1="40" y1="40" x2="60" y2="40" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
+  <line x1="39" y1="70" x2="61" y2="70" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
+  <line x1="38" y1="100" x2="62" y2="100" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
+
+  <!-- 함포 (좌우) -->
+  <circle cx="35" cy="50" r="2.5" fill="#222"/>
+  <circle cx="65" cy="50" r="2.5" fill="#222"/>
+  <circle cx="34" cy="72" r="2.5" fill="#222"/>
+  <circle cx="66" cy="72" r="2.5" fill="#222"/>
+  <circle cx="34" cy="94" r="2.5" fill="#222"/>
+  <circle cx="66" cy="94" r="2.5" fill="#222"/>
+
+  <!-- 뒤쪽 돛대 (큰 돛) -->
+  <g>
+    <path d="M 26,60 L 74,60 Q 68,67 74,74 L 26,74 Q 32,67 26,60 Z"
+          fill="#e8dcc0" stroke="#a89568" stroke-width="1.5"/>
+    <circle cx="50" cy="67" r="2.5" fill="#5a4a2f"/>
+  </g>
+
+  <!-- 앞쪽 돛대 (작은 돛) -->
+  <g>
+    <path d="M 31,28 L 69,28 Q 64,33.5 69,39 L 31,39 Q 36,33.5 31,28 Z"
+          fill="#f2ead6" stroke="#a89568" stroke-width="1.5"/>
+    <circle cx="50" cy="33.5" r="2" fill="#5a4a2f"/>
+  </g>
+
+  <!-- 뱃머리 장식 -->
+  <circle cx="50" cy="12" r="2" fill="#d4af37"/>
+
+  <!-- 깃발(정체성 컬러) -->
+  <path d="M50,4 L50,-6 L60,-2 L50,2 Z" fill="#d4af37"/>
+</svg>
