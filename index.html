@@ -64,18 +64,29 @@
     color:var(--parchment); border-radius:8px; padding:4px 8px; font-size:16px;
   }
 
-  /* ---------- VIRTUAL JOYSTICK ---------- */
-  #joyBase{
-    position:absolute; left:26px; bottom:26px; z-index:6;
-    width:112px; height:112px; border-radius:50%;
-    background:radial-gradient(circle, rgba(255,255,255,.10), rgba(0,0,0,.28));
-    border:2px solid #ffffff55; touch-action:none;
+  /* ---------- D-PAD (십자키) ---------- */
+  #dpad{
+    position:absolute; left:20px; bottom:20px; z-index:6;
+    width:168px; height:168px;
+    display:grid; grid-template-columns:56px 56px 56px; grid-template-rows:56px 56px 56px;
   }
-  #joyKnob{
-    position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px;
-    border-radius:50%; background:radial-gradient(circle at 35% 30%, #ffe6b8, var(--gold) 75%);
-    border:2px solid #7a4f0fcc; box-shadow:0 4px 8px rgba(0,0,0,.4);
-    transition:transform .05s linear;
+  .dpadBtn{
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,#3a6c8a,#1c3d50); border:2px solid #ffffff55;
+    color:#eaf5fb; font-size:22px; touch-action:none; user-select:none;
+    box-shadow:inset 0 -3px 6px rgba(0,0,0,.35);
+  }
+  .dpadBtn.active{
+    background:linear-gradient(180deg,#ffd873,var(--gold)); color:#3a2205;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.35);
+  }
+  #dpadUp{ grid-column:2; grid-row:1; border-radius:12px 12px 0 0; }
+  #dpadDown{ grid-column:2; grid-row:3; border-radius:0 0 12px 12px; }
+  #dpadLeft{ grid-column:1; grid-row:2; border-radius:12px 0 0 12px; }
+  #dpadRight{ grid-column:3; grid-row:2; border-radius:0 12px 12px 0; }
+  #dpadCenter{
+    grid-column:2; grid-row:2; background:rgba(255,255,255,.08); border:2px solid #ffffff33;
+    pointer-events:none;
   }
 
   /* ---------- FIRE BUTTON (양현 동시 발사) ---------- */
@@ -151,9 +162,15 @@
       <button id="muteBtn">🔊</button>
     </div>
 
-    <div id="hint">조이스틱으로 항해, 발사 버튼으로 양현 함포 동시 발사!</div>
+    <div id="hint">십자키: 상하=가속/감속, 좌우=선회 · 발사 버튼으로 양현 함포 동시 발사!</div>
 
-    <div id="joyBase"><div id="joyKnob"></div></div>
+    <div id="dpad">
+      <button class="dpadBtn" id="dpadUp">▲</button>
+      <button class="dpadBtn" id="dpadLeft">◀</button>
+      <div id="dpadCenter"></div>
+      <button class="dpadBtn" id="dpadRight">▶</button>
+      <button class="dpadBtn" id="dpadDown">▼</button>
+    </div>
     <button id="fireBtn"><div class="cd" id="fireCd"></div><span>🔥<br>발사</span></button>
 
     <div id="startScreen" class="overlay">
@@ -162,7 +179,7 @@
         <h1 style="text-align:center">함포대전</h1>
         <p style="opacity:.8; text-align:center">- 대항해시대 자유 해상 포격전 -</p>
         <p>
-        · 왼쪽 <b>조이스틱</b>으로 함선을 조종합니다. <b>위/아래</b>로 밀면 화면상 위/아래로 이동하고, <b>좌/우</b>로 밀면 이동과 무관하게 함선의 선수(포문 방향)만 돌아갑니다. 관성이 있어 즉시 멈추지 않습니다.<br>
+        · 왼쪽 <b>십자키</b>로 함선을 조종합니다. <b>▲/▼</b>는 속도를 높이거나 낮추고(▼를 계속 누르면 속도가 0 밑으로 내려가 후진합니다), <b>◀/▶</b>는 좌우로 선회합니다. 관성이 있어 즉시 멈추거나 꺾이지 않습니다.<br>
         · 오른쪽 <b>발사</b> 버튼을 누르면 <b>양쪽 현측 대포가 동시에</b> 발사됩니다.<br>
         · 바다에 떠 있는 <b>⚡화약통</b>을 주우면 일정 시간 발사 수와 포탄 속도가 강화되고, <b>✚구호통</b>을 주우면 체력이 회복됩니다(구호통은 화약통보다 드물게 나타남).<br>
         · 체력(♥)이 모두 사라지면 목숨을 하나 잃고 그 자리에서 다시 시작합니다. 목숨을 모두 잃으면 게임 오버!<br>
@@ -473,40 +490,27 @@
     score = 0; timeLeft = TIME_LIMIT; elapsed = 0; spawnTimer = 1.0; pickupTimer = 4;
   }
 
-  /* ============== 입력: 가상 조이스틱 ============== */
-  var joyBase = document.getElementById('joyBase');
-  var joyKnob = document.getElementById('joyKnob');
-  var joyVec = {x:0,y:0}; // -1..1
-  var joyActive = false, joyPointerId = null, joyOrigin = {x:0,y:0};
-  var JOY_R = 46;
-
-  function joyStart(e){
-    joyActive = true;
-    joyPointerId = e.pointerId;
-    var r = joyBase.getBoundingClientRect();
-    joyOrigin.x = r.left + r.width/2;
-    joyOrigin.y = r.top + r.height/2;
-    joyMove(e);
-    joyBase.setPointerCapture && joyBase.setPointerCapture(e.pointerId);
+  /* ============== 입력: 십자키(D-pad) ==============
+     위/아래 = 가속/감속(0 아래로 내려가면 후진), 좌/우 = 선회(방향타).
+     버튼별로 독립적인 포인터를 캡처해 동시에 여러 개(예: 위+오른쪽)를
+     함께 누를 수 있습니다. */
+  var dpad = { up:false, down:false, left:false, right:false };
+  function wireDpadBtn(id, key){
+    var el = document.getElementById(id);
+    el.addEventListener('pointerdown', function(e){
+      e.preventDefault();
+      dpad[key] = true;
+      el.classList.add('active');
+      try{ el.setPointerCapture && el.setPointerCapture(e.pointerId); }catch(err){}
+    });
+    function release(){ dpad[key] = false; el.classList.remove('active'); }
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
   }
-  function joyMove(e){
-    if(!joyActive || e.pointerId !== joyPointerId) return;
-    var dx = e.clientX - joyOrigin.x, dy = e.clientY - joyOrigin.y;
-    var d = Math.sqrt(dx*dx+dy*dy);
-    if(d > JOY_R){ dx = dx/d*JOY_R; dy = dy/d*JOY_R; }
-    joyKnob.style.transform = 'translate('+dx+'px,'+dy+'px)';
-    joyVec.x = dx/JOY_R; joyVec.y = dy/JOY_R;
-  }
-  function joyEnd(e){
-    if(e && e.pointerId !== joyPointerId) return;
-    joyActive = false; joyPointerId = null;
-    joyVec.x = 0; joyVec.y = 0;
-    joyKnob.style.transform = 'translate(0,0)';
-  }
-  joyBase.addEventListener('pointerdown', function(e){ e.preventDefault(); joyStart(e); });
-  window.addEventListener('pointermove', joyMove);
-  window.addEventListener('pointerup', joyEnd);
-  window.addEventListener('pointercancel', joyEnd);
+  wireDpadBtn('dpadUp', 'up');
+  wireDpadBtn('dpadDown', 'down');
+  wireDpadBtn('dpadLeft', 'left');
+  wireDpadBtn('dpadRight', 'right');
 
   /* ============== 입력: 키보드 (데스크톱) ============== */
   var keys = {};
@@ -519,11 +523,15 @@
   });
   window.addEventListener('keyup', function(e){ keys[e.key.toLowerCase()] = false; });
 
-  function getInputVector(){
-    var kx = (keys['d']||keys['arrowright']?1:0) - (keys['a']||keys['arrowleft']?1:0);
-    var ky = (keys['s']||keys['arrowdown']?1:0) - (keys['w']||keys['arrowup']?1:0);
-    if(kx || ky) return {x:kx, y:ky};
-    return joyVec;
+  function getRudderThrottle(){
+    var up    = dpad.up    || keys['w'] || keys['arrowup'];
+    var down  = dpad.down  || keys['s'] || keys['arrowdown'];
+    var left  = dpad.left  || keys['a'] || keys['arrowleft'];
+    var right = dpad.right || keys['d'] || keys['arrowright'];
+    return {
+      rudder:   (right?1:0) - (left?1:0),
+      throttle: (up?1:0) - (down?1:0)
+    };
   }
 
   /* ============== 발사 버튼 (양현 동시 발사) ============== */
@@ -604,44 +612,6 @@
     if(ship.x > WORLD_W-margin){ ship.x = WORLD_W-margin; ship.vel.x = Math.min(0, ship.vel.x); }
     if(ship.y < margin){ ship.y = margin; ship.vel.y = Math.max(0, ship.vel.y); }
     if(ship.y > WORLD_H-margin){ ship.y = WORLD_H-margin; ship.vel.y = Math.min(0, ship.vel.y); }
-  }
-
-  /* ============== 플레이어 전용 조작: 좌우=회전(조준), 상하=화면 기준 평행이동 ==============
-     좌/우 스틱은 이동에 영향을 주지 않고 함선의 선수(포문) 방향만 돌립니다.
-     위/아래 스틱은 현재 선수 방향과 무관하게 화면상 위/아래로 직접 이동시키며,
-     관성(가속 지연)은 그대로 유지해 무게감을 남깁니다. */
-  function updatePlayerPhysics(dt){
-    var spec = player.spec;
-    var iv = getInputVector();
-    var ix = Math.max(-1, Math.min(1, iv.x));
-    var iy = Math.max(-1, Math.min(1, iv.y));
-
-    var targetAngVel = ix * spec.turnRate;
-    player.angularVelocity += (targetAngVel - player.angularVelocity) * Math.min(1, dt*6.5);
-    player.heading += player.angularVelocity * dt;
-
-    var targetVelY = iy * spec.maxSpeed;
-    player.vel.x += (0 - player.vel.x) * Math.min(1, dt*spec.accel);
-    player.vel.y += (targetVelY - player.vel.y) * Math.min(1, dt*spec.accel);
-
-    player.x += player.vel.x*dt;
-    player.y += player.vel.y*dt;
-
-    var sp = Math.hypot(player.vel.x, player.vel.y);
-    if(sp > 12 && Math.random() < dt*10){
-      var moveBack = Math.atan2(player.vel.y, player.vel.x) + Math.PI;
-      wakes.push({
-        x: player.x + Math.cos(moveBack)*spec.length*0.35,
-        y: player.y + Math.sin(moveBack)*spec.length*0.35,
-        age:0, life:0.9+Math.random()*0.4, r: 3+Math.random()*3
-      });
-    }
-
-    var margin = spec.collisionR + 6;
-    if(player.x < margin){ player.x = margin; player.vel.x = Math.max(0, player.vel.x); }
-    if(player.x > WORLD_W-margin){ player.x = WORLD_W-margin; player.vel.x = Math.min(0, player.vel.x); }
-    if(player.y < margin){ player.y = margin; player.vel.y = Math.max(0, player.vel.y); }
-    if(player.y > WORLD_H-margin){ player.y = WORLD_H-margin; player.vel.y = Math.min(0, player.vel.y); }
   }
 
   function respawnPlayer(){
@@ -773,7 +743,8 @@
     if(player.invuln>0) player.invuln -= dt;
     if(player.buffTime>0) player.buffTime = Math.max(0, player.buffTime-dt);
 
-    updatePlayerPhysics(dt);
+    var rt = getRudderThrottle();
+    updateShipPhysics(player, rt.rudder, rt.throttle, dt);
 
     camera.x += (player.x - camera.x) * Math.min(1, dt*3.2);
     camera.y += (player.y - camera.y) * Math.min(1, dt*3.2);
