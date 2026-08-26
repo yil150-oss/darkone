@@ -162,7 +162,7 @@
         <h1 style="text-align:center">함포대전</h1>
         <p style="opacity:.8; text-align:center">- 대항해시대 자유 해상 포격전 -</p>
         <p>
-        · 왼쪽 <b>조이스틱</b>으로 함선을 조종합니다. 미는 방향이 곧 화면상 이동 방향이며(예: 위로 밀면 화면 위로 전진), 배가 그 방향으로 서서히 선수를 돌립니다. 관성이 있어 즉시 멈추거나 꺾이지 않습니다.<br>
+        · 왼쪽 <b>조이스틱</b>으로 함선을 조종합니다. <b>위/아래</b>로 밀면 화면상 위/아래로 이동하고, <b>좌/우</b>로 밀면 이동과 무관하게 함선의 선수(포문 방향)만 돌아갑니다. 관성이 있어 즉시 멈추지 않습니다.<br>
         · 오른쪽 <b>발사</b> 버튼을 누르면 <b>양쪽 현측 대포가 동시에</b> 발사됩니다.<br>
         · 바다에 떠 있는 <b>⚡화약통</b>을 주우면 일정 시간 발사 수와 포탄 속도가 강화되고, <b>✚구호통</b>을 주우면 체력이 회복됩니다(구호통은 화약통보다 드물게 나타남).<br>
         · 체력(♥)이 모두 사라지면 목숨을 하나 잃고 그 자리에서 다시 시작합니다. 목숨을 모두 잃으면 게임 오버!<br>
@@ -606,6 +606,44 @@
     if(ship.y > WORLD_H-margin){ ship.y = WORLD_H-margin; ship.vel.y = Math.min(0, ship.vel.y); }
   }
 
+  /* ============== 플레이어 전용 조작: 좌우=회전(조준), 상하=화면 기준 평행이동 ==============
+     좌/우 스틱은 이동에 영향을 주지 않고 함선의 선수(포문) 방향만 돌립니다.
+     위/아래 스틱은 현재 선수 방향과 무관하게 화면상 위/아래로 직접 이동시키며,
+     관성(가속 지연)은 그대로 유지해 무게감을 남깁니다. */
+  function updatePlayerPhysics(dt){
+    var spec = player.spec;
+    var iv = getInputVector();
+    var ix = Math.max(-1, Math.min(1, iv.x));
+    var iy = Math.max(-1, Math.min(1, iv.y));
+
+    var targetAngVel = ix * spec.turnRate;
+    player.angularVelocity += (targetAngVel - player.angularVelocity) * Math.min(1, dt*6.5);
+    player.heading += player.angularVelocity * dt;
+
+    var targetVelY = iy * spec.maxSpeed;
+    player.vel.x += (0 - player.vel.x) * Math.min(1, dt*spec.accel);
+    player.vel.y += (targetVelY - player.vel.y) * Math.min(1, dt*spec.accel);
+
+    player.x += player.vel.x*dt;
+    player.y += player.vel.y*dt;
+
+    var sp = Math.hypot(player.vel.x, player.vel.y);
+    if(sp > 12 && Math.random() < dt*10){
+      var moveBack = Math.atan2(player.vel.y, player.vel.x) + Math.PI;
+      wakes.push({
+        x: player.x + Math.cos(moveBack)*spec.length*0.35,
+        y: player.y + Math.sin(moveBack)*spec.length*0.35,
+        age:0, life:0.9+Math.random()*0.4, r: 3+Math.random()*3
+      });
+    }
+
+    var margin = spec.collisionR + 6;
+    if(player.x < margin){ player.x = margin; player.vel.x = Math.max(0, player.vel.x); }
+    if(player.x > WORLD_W-margin){ player.x = WORLD_W-margin; player.vel.x = Math.min(0, player.vel.x); }
+    if(player.y < margin){ player.y = margin; player.vel.y = Math.max(0, player.vel.y); }
+    if(player.y > WORLD_H-margin){ player.y = WORLD_H-margin; player.vel.y = Math.min(0, player.vel.y); }
+  }
+
   function respawnPlayer(){
     player.hp = player.maxHp;
     player.invuln = RESPAWN_INVULN;
@@ -735,19 +773,7 @@
     if(player.invuln>0) player.invuln -= dt;
     if(player.buffTime>0) player.buffTime = Math.max(0, player.buffTime-dt);
 
-    // 조이스틱/방향키를 "화면 기준 절대 방향"으로 해석 (배가 어느 쪽을 보고 있든
-    // 스틱을 위로 밀면 화면 위쪽으로 향하도록 목표 방향을 정하고, 그 방향으로
-    // 서서히 선수를 돌리는 방식 - 관성/타각 물리는 그대로 유지됨)
-    var iv = getInputVector();
-    var ivMag = Math.hypot(iv.x, iv.y);
-    var rudder = 0, throttle = 0;
-    if(ivMag > 0.12){
-      var desiredHeading = Math.atan2(iv.y, iv.x);
-      var headingErr = angleDiff(player.heading, desiredHeading);
-      rudder = Math.max(-1, Math.min(1, headingErr * 2.2));
-      throttle = Math.min(1, ivMag);
-    }
-    updateShipPhysics(player, rudder, throttle, dt);
+    updatePlayerPhysics(dt);
 
     camera.x += (player.x - camera.x) * Math.min(1, dt*3.2);
     camera.y += (player.y - camera.y) * Math.min(1, dt*3.2);
