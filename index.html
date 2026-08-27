@@ -286,120 +286,200 @@
      maxSpeed/accel/inertia는 "속도 50% 하향 버전"과 "그 이전 버전"의 중간값으로 조정되어
      최고속도는 적당히 느리게 유지하면서도 방향키 입력에 대한 반응성(가속·관성 응답)은 더 빨라졌습니다. */
   var SHIP_SPECS = {
-    player:  { length:82, beam:28, masts:2, guns:3, hullColor:'#2f5f8a', deckColor:'#3f7aad', sailColor:'#f2e6c9', flagColor:'#3f6fb0',
+    player:  { length:82, beam:26, masts:2, guns:3, gunRows:1, quarterGallery:true, sternGallery:true,
+               hullColor:'#2f5f8a', deckColor:'#3f7aad', trimColor:'#e0b84b', sailColor:'#f2e6c9', flagColor:'#3f6fb0',
                maxSpeed:128, turnRate:1.7, accel:1.6, inertia:2.8, maxHp:6, collisionR:26 },
-    sloop:   { length:60, beam:22, masts:1, guns:2, hullColor:'#7a2f2f', deckColor:'#8f3d3d', sailColor:'#e9d7bd', flagColor:'#8a2020',
+    sloop:   { length:60, beam:17, masts:1, guns:2, gunRows:1, quarterGallery:false, sternGallery:false,
+               hullColor:'#7a2f2f', deckColor:'#8f3d3d', trimColor:'#c58e6c', sailColor:'#e9d7bd', flagColor:'#8a2020',
                maxSpeed:146, turnRate:2.3, accel:2.0, inertia:3.6, maxHp:2, collisionR:19, score:60 },
-    frigate: { length:86, beam:29, masts:2, guns:3, hullColor:'#5c2323', deckColor:'#71302f', sailColor:'#e9d7bd', flagColor:'#8a2020',
+    frigate: { length:86, beam:27, masts:2, guns:3, gunRows:1, quarterGallery:true, sternGallery:true,
+               hullColor:'#5c2323', deckColor:'#71302f', trimColor:'#d6a25c', sailColor:'#e9d7bd', flagColor:'#8a2020',
                maxSpeed:113, turnRate:1.4, accel:1.3, inertia:2.5, maxHp:4, collisionR:26, score:120 },
-    galleon: { length:114, beam:40, masts:3, guns:4, hullColor:'#40201c', deckColor:'#552a22', sailColor:'#e9d7bd', flagColor:'#8a2020',
+    galleon: { length:114, beam:50, masts:3, guns:4, gunRows:2, quarterGallery:true, sternGallery:true,
+               hullColor:'#40201c', deckColor:'#552a22', trimColor:'#d4af37', sailColor:'#e9d7bd', flagColor:'#8a2020',
                maxSpeed:79, turnRate:0.85, accel:0.85, inertia:1.6, maxHp:8, collisionR:34, score:220 }
   };
 
-  /* ============== 함선 스프라이트 (제작하신 SVG 함선 이미지) ==============
-     player_ship.svg / enemy_small.svg / enemy_medium.svg / enemy_large.svg 를
-     그대로 내장(inline)해 외부 파일 없이 단일 HTML로 동작하도록 했습니다.
-     원본 그림은 뱃머리가 위쪽(-y)을 향하는 구도라, 그리기 단계에서
-     heading + 90도 로 보정해 좌우 이동 방향과 맞춥니다. */
-  var SHIP_SVG_MARKUP = {
-    player: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -10 100 160" width="100" height="160">
-  <ellipse cx="50" cy="75" rx="30" ry="65" fill="#0a2a3a" opacity="0.15"/>
-  <path d="M50,6 C62,20 68,35 66,55 L64,120 Q64,138 50,144 Q36,138 36,120 L34,55 C32,35 38,20 50,6 Z"
-        fill="#3b6e78" stroke="#1f4650" stroke-width="2"/>
-  <path d="M50,10 C58,22 62,35 61,52 L59,118 Q59,132 50,138"
-        fill="none" stroke="#8fd0d6" stroke-width="1.5" opacity="0.6"/>
-  <line x1="40" y1="40" x2="60" y2="40" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
-  <line x1="39" y1="70" x2="61" y2="70" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
-  <line x1="38" y1="100" x2="62" y2="100" stroke="#1f4650" stroke-width="1" opacity="0.5"/>
-  <circle cx="35" cy="50" r="2.5" fill="#222"/><circle cx="65" cy="50" r="2.5" fill="#222"/>
-  <circle cx="34" cy="72" r="2.5" fill="#222"/><circle cx="66" cy="72" r="2.5" fill="#222"/>
-  <circle cx="34" cy="94" r="2.5" fill="#222"/><circle cx="66" cy="94" r="2.5" fill="#222"/>
-  <g><path d="M 26,60 L 74,60 Q 68,67 74,74 L 26,74 Q 32,67 26,60 Z" fill="#e8dcc0" stroke="#a89568" stroke-width="1.5"/>
-    <circle cx="50" cy="67" r="2.5" fill="#5a4a2f"/></g>
-  <g><path d="M 31,28 L 69,28 Q 64,33.5 69,39 L 31,39 Q 36,33.5 31,28 Z" fill="#f2ead6" stroke="#a89568" stroke-width="1.5"/>
-    <circle cx="50" cy="33.5" r="2" fill="#5a4a2f"/></g>
-  <circle cx="50" cy="12" r="2" fill="#d4af37"/>
-  <path d="M50,4 L50,-6 L60,-2 L50,2 Z" fill="#d4af37"/>
-</svg>`,
-    sloop: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -8 70 108" width="70" height="108">
-  <ellipse cx="35" cy="50" rx="20" ry="42" fill="#3a1a12" opacity="0.15"/>
-  <path d="M35,5 C44,15 48,27 46,40 L45,80 Q45,92 35,96 Q25,92 25,80 L24,40 C22,27 26,15 35,5 Z"
-        fill="#7a4a35" stroke="#4a2a1c" stroke-width="2"/>
-  <path d="M35,9 C41,17 44,27 43,38 L42,78 Q42,88 35,92" fill="none" stroke="#c58e6c" stroke-width="1.2" opacity="0.5"/>
-  <line x1="27" y1="35" x2="43" y2="35" stroke="#4a2a1c" stroke-width="1" opacity="0.5"/>
-  <line x1="26" y1="60" x2="44" y2="60" stroke="#4a2a1c" stroke-width="1" opacity="0.5"/>
-  <circle cx="25" cy="42" r="2" fill="#222"/><circle cx="45" cy="42" r="2" fill="#222"/>
-  <circle cx="24" cy="62" r="2" fill="#222"/><circle cx="46" cy="62" r="2" fill="#222"/>
-  <path d="M 16,38 L 54,38 Q 48,44 54,50 L 16,50 Q 22,44 16,38 Z" fill="#d8c9a3" stroke="#7a6842" stroke-width="1.3"/>
-  <circle cx="35" cy="44" r="2" fill="#4a3a22"/>
-  <path d="M35,3 L35,-5 L43,-1.5 L35,2 Z" fill="#8b2e2e"/>
-</svg>`,
-    frigate: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -10 100 160" width="100" height="160">
-  <ellipse cx="50" cy="75" rx="30" ry="65" fill="#3a1a12" opacity="0.15"/>
-  <path d="M50,6 C62,20 68,35 66,55 L64,120 Q64,138 50,144 Q36,138 36,120 L34,55 C32,35 38,20 50,6 Z"
-        fill="#8a3a2a" stroke="#4a1c12" stroke-width="2"/>
-  <path d="M50,10 C58,22 62,35 61,52 L59,118 Q59,132 50,138" fill="none" stroke="#d69a7c" stroke-width="1.5" opacity="0.5"/>
-  <line x1="40" y1="40" x2="60" y2="40" stroke="#4a1c12" stroke-width="1" opacity="0.5"/>
-  <line x1="39" y1="70" x2="61" y2="70" stroke="#4a1c12" stroke-width="1" opacity="0.5"/>
-  <line x1="38" y1="100" x2="62" y2="100" stroke="#4a1c12" stroke-width="1" opacity="0.5"/>
-  <circle cx="35" cy="50" r="2.5" fill="#222"/><circle cx="65" cy="50" r="2.5" fill="#222"/>
-  <circle cx="34" cy="72" r="2.5" fill="#222"/><circle cx="66" cy="72" r="2.5" fill="#222"/>
-  <circle cx="34" cy="94" r="2.5" fill="#222"/><circle cx="66" cy="94" r="2.5" fill="#222"/>
-  <path d="M 26,60 L 74,60 Q 68,67 74,74 L 26,74 Q 32,67 26,60 Z" fill="#d8c9a3" stroke="#7a6842" stroke-width="1.5"/>
-  <circle cx="50" cy="67" r="2.5" fill="#4a3a22"/>
-  <path d="M 31,28 L 69,28 Q 64,33.5 69,39 L 31,39 Q 36,33.5 31,28 Z" fill="#e0d2ae" stroke="#7a6842" stroke-width="1.5"/>
-  <circle cx="50" cy="33.5" r="2" fill="#4a3a22"/>
-  <circle cx="50" cy="12" r="2" fill="#b0472f"/>
-  <path d="M50,4 L50,-6 L60,-2 L50,2 Z" fill="#8b2e2e"/>
-</svg>`,
-    galleon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -14 140 224" width="140" height="224">
-  <ellipse cx="70" cy="105" rx="42" ry="92" fill="#2a1008" opacity="0.18"/>
-  <path d="M70,8 C86,26 94,48 92,76 L90,168 Q90,194 70,202 Q50,194 50,168 L48,76 C46,48 54,26 70,8 Z"
-        fill="#5c1f1f" stroke="#2a0d0d" stroke-width="2.5"/>
-  <path d="M70,14 C80,30 86,48 84,72 L82,164 Q82,184 70,192" fill="none" stroke="#b06b6b" stroke-width="1.8" opacity="0.5"/>
-  <line x1="55" y1="55" x2="85" y2="55" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
-  <line x1="53" y1="90" x2="87" y2="90" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
-  <line x1="52" y1="125" x2="88" y2="125" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
-  <line x1="52" y1="155" x2="88" y2="155" stroke="#2a0d0d" stroke-width="1.2" opacity="0.5"/>
-  <circle cx="49" cy="65" r="3" fill="#111"/><circle cx="91" cy="65" r="3" fill="#111"/>
-  <circle cx="48" cy="90" r="3" fill="#111"/><circle cx="92" cy="90" r="3" fill="#111"/>
-  <circle cx="48" cy="115" r="3" fill="#111"/><circle cx="92" cy="115" r="3" fill="#111"/>
-  <circle cx="49" cy="140" r="3" fill="#111"/><circle cx="91" cy="140" r="3" fill="#111"/>
-  <path d="M 34,120 L 106,120 Q 98,129 106,138 L 34,138 Q 42,129 34,120 Z" fill="#e8dcc0" stroke="#7a6842" stroke-width="1.8"/>
-  <circle cx="70" cy="129" r="3.2" fill="#3a2a12"/>
-  <path d="M 30,78 L 110,78 Q 101,88 110,98 L 30,98 Q 39,88 30,78 Z" fill="#f0e6cc" stroke="#7a6842" stroke-width="1.8"/>
-  <circle cx="70" cy="88" r="3.5" fill="#3a2a12"/>
-  <path d="M 40,42 L 100,42 Q 94,49.5 100,57 L 40,57 Q 46,49.5 40,42 Z" fill="#e0d2ae" stroke="#7a6842" stroke-width="1.6"/>
-  <circle cx="70" cy="49.5" r="3" fill="#3a2a12"/>
-  <circle cx="70" cy="16" r="3" fill="#d4af37"/>
-  <path d="M62,16 L70,4 L78,16 Z" fill="#8a1c1c" stroke="#4a0d0d" stroke-width="1"/>
-  <path d="M70,2 L70,-10 L84,-4 L70,3 Z" fill="#1a1a1a"/>
-</svg>`
-  };
-  // 원본 도안 기준 실제 선체 높이/너비(마진 확장 전)와, 위쪽에 추가된 여백(margin: 깃발 표시용)
-  var SHIP_IMG_META = {
-    player:  { origW:100, origH:150, margin:10 },
-    sloop:   { origW:70,  origH:100, margin:8  },
-    frigate: { origW:100, origH:150, margin:10 },
-    galleon: { origW:140, origH:210, margin:14 }
-  };
-  var shipImages = {};
-  Object.keys(SHIP_SVG_MARKUP).forEach(function(type){
-    var img = new Image();
-    img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SHIP_SVG_MARKUP[type]);
-    shipImages[type] = img;
-  });
+  /* ============== 함선 스프라이트 (절차적 생성 - 전열함 실루엣) ==============
+     실제 전열함(ship of the line) 특유의 생김새를 코드로 정밀하게 그립니다:
+     - 튤형(tumblehome) 선체 곡선 + 넓고 평평한 선미(transom, 뾰족하지 않음)
+     - 함수 비크헤드(beakhead)와 사장(bowsprit) + 이물 장식
+     - 선미 갤러리 창문, 현측 쿼터 갤러리(발코니) - 큰 배일수록 표시
+     - 2단 포열(gunRows=2)로 진짜 "전열함"인 갤리온을 다른 배와 확실히 구분
+     - 사각돛 야드(가로 활대)가 있는 돛, 선수루/후갑판 음영
+     클래스별로 배 폭 비율(beam)과 선미 폭 비율을 크게 다르게 줘서
+     "길이만 다른 같은 모양"이 아니라 실루엣 자체가 다르게 만들었습니다. */
+  function shade(hex, amt){
+    var n = parseInt(hex.slice(1),16);
+    var r = Math.min(255,Math.max(0, (n>>16) + amt));
+    var g = Math.min(255,Math.max(0, ((n>>8)&255) + amt));
+    var b = Math.min(255,Math.max(0, (n&255) + amt));
+    return 'rgb('+r+','+g+','+b+')';
+  }
+
+  function buildShipSprite(spec){
+    var L = spec.length, B = spec.beam, hb = B/2;
+    var sternRatio = spec.sternRatio != null ? spec.sternRatio : 0.65;
+    var pad = 24;
+    var cw = Math.ceil(L + pad*2), ch = Math.ceil(B*2.8 + pad*1.6);
+    var off = document.createElement('canvas');
+    off.width = cw; off.height = ch;
+    var c = off.getContext('2d');
+    c.translate(cw/2, ch/2);
+
+    // 선수(비크헤드)는 좁고 뾰족, 중앙은 최대 폭, 선미는 뾰족해지지 않고
+    // sternRatio 만큼의 폭을 유지한 채 평평하게 끊기는 트랜섬 형태
+    function halfWidth(t){
+      if(t < 0.05) return hb*0.10*(t/0.05);
+      if(t < 0.42){ var u=(t-0.05)/0.37, s=u*u*(3-2*u); return hb*0.10 + (hb-hb*0.10)*s; }
+      if(t < 0.80){ var u=(t-0.42)/0.38; return hb*(1-0.10*u*u); }
+      var u2=Math.min(1,(t-0.80)/0.20), s2=u2*u2*(3-2*u2);
+      return hb*0.90 - (hb*0.90-hb*sternRatio)*s2;
+    }
+    function hullPath(scaleX, scaleY){
+      scaleX = scaleX||1; scaleY = scaleY||1;
+      var N=26, top=[];
+      for(var i=0;i<=N;i++){
+        var t=i/N;
+        top.push([(L/2 - t*L)*scaleX, -halfWidth(t)*scaleY]);
+      }
+      c.beginPath();
+      c.moveTo(top[0][0], top[0][1]);
+      for(var i=1;i<top.length;i++) c.lineTo(top[i][0], top[i][1]);
+      for(var i=top.length-1;i>=0;i--) c.lineTo(top[i][0], -top[i][1]);
+      c.closePath();
+    }
+
+    // 그림자
+    c.save(); c.translate(3,5); hullPath(); c.fillStyle='rgba(0,0,0,0.25)'; c.fill(); c.restore();
+
+    // 선체
+    hullPath();
+    var grad = c.createLinearGradient(0,-hb,0,hb);
+    grad.addColorStop(0, shade(spec.hullColor,24));
+    grad.addColorStop(0.5, spec.hullColor);
+    grad.addColorStop(1, shade(spec.hullColor,-30));
+    c.fillStyle = grad; c.fill();
+    c.lineWidth = 2; c.strokeStyle = 'rgba(0,0,0,0.55)'; c.stroke();
+
+    // 갑판
+    hullPath(0.90, 0.72);
+    c.fillStyle = spec.deckColor; c.fill();
+
+    // 선수루 / 후갑판 음영 (단이 진 갑판 구조 표현)
+    function deckPatch(t0,t1,alpha){
+      var N=10, pts=[];
+      for(var i=0;i<=N;i++){ var t=t0+(t1-t0)*i/N; pts.push([L/2-t*L, -halfWidth(t)*0.84]); }
+      c.beginPath();
+      c.moveTo(pts[0][0],pts[0][1]);
+      for(var i=1;i<pts.length;i++) c.lineTo(pts[i][0],pts[i][1]);
+      for(var i=pts.length-1;i>=0;i--) c.lineTo(pts[i][0], -pts[i][1]);
+      c.closePath();
+      c.fillStyle = 'rgba(255,255,255,'+alpha+')';
+      c.fill();
+    }
+    deckPatch(0.08, 0.24, 0.10);
+    deckPatch(0.64, 0.86, 0.15);
+
+    // 중앙 갑판선
+    c.strokeStyle = 'rgba(0,0,0,0.22)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(L*0.40, 0); c.lineTo(-L*0.44, 0);
+    c.setLineDash([4,3]); c.stroke(); c.setLineDash([]);
+
+    // 함포 (gunRows=2면 상/하 2열 포열 - 진짜 전열함의 특징)
+    for(var side=-1; side<=1; side+=2){
+      for(var row=0; row<spec.gunRows; row++){
+        var rowInset = spec.gunRows===2 ? (row===0?0.98:0.78) : 0.92;
+        for(var g=0; g<spec.guns; g++){
+          var t = 0.16 + (g/(Math.max(1,spec.guns-1)||1))*0.58;
+          var gx = L/2 - t*L;
+          var gy = side*Math.max(hb*0.32, halfWidth(t)*rowInset);
+          c.fillStyle = 'rgba(20,14,10,0.85)';
+          c.fillRect(gx-2, gy-1.5, 4, 3);
+          c.strokeStyle = 'rgba(15,12,10,0.9)'; c.lineWidth = 1.4;
+          c.beginPath(); c.moveTo(gx,gy); c.lineTo(gx, gy+side*5); c.stroke();
+        }
+      }
+    }
+
+    // 쿼터 갤러리(현측 발코니) - 큰 배만
+    if(spec.quarterGallery){
+      var tq = 0.90, qx = L/2 - tq*L, qw = halfWidth(tq);
+      for(var s2=-1; s2<=1; s2+=2){
+        c.save(); c.translate(qx, s2*qw);
+        c.beginPath();
+        c.moveTo(-6,0); c.lineTo(6,0); c.lineTo(4, s2*7); c.lineTo(-4, s2*7); c.closePath();
+        c.fillStyle = shade(spec.hullColor,-10); c.fill();
+        c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 1; c.stroke();
+        c.fillStyle = spec.trimColor;
+        c.fillRect(-3, s2*2, 6, 2.2);
+        c.restore();
+      }
+    }
+
+    // 선미 갤러리 창문 (평평한 트랜섬 위에 나란히)
+    if(spec.sternGallery){
+      var sw = halfWidth(1);
+      c.save(); c.translate(-L/2, 0);
+      var winCount = spec.gunRows===2 ? 5 : 4;
+      for(var wi=0; wi<winCount; wi++){
+        var wy = -sw*0.78 + (wi/(winCount-1))*sw*1.56;
+        c.fillStyle = spec.trimColor;
+        c.fillRect(-2.2, wy-2, 3.2, 4);
+        c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 0.6; c.strokeRect(-2.2, wy-2, 3.2, 4);
+      }
+      c.strokeStyle = shade(spec.hullColor,-40); c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(0,-sw); c.lineTo(0,sw); c.stroke();
+      c.restore();
+    }
+
+    // 돛대 + 야드(가로 활대) + 돛
+    for(var m=0; m<spec.masts; m++){
+      var mt = spec.masts===1 ? 0.10 : (0.30 - m*(0.55/(spec.masts-1)));
+      var mx = mt*L;
+      var sailW = B*(m===0 && spec.masts>1 ? 0.62 : 0.74);
+      var sailL = L*(spec.masts===1 ? 0.15 : 0.10);
+
+      c.save(); c.translate(mx,0);
+      c.beginPath(); c.ellipse(0.5,0.5, sailL/2, sailW/2, 0,0,Math.PI*2);
+      c.fillStyle = 'rgba(0,0,0,0.16)'; c.fill(); c.restore();
+
+      c.save(); c.translate(mx,0);
+      var sgrad = c.createLinearGradient(0,-sailW/2,0,sailW/2);
+      sgrad.addColorStop(0, shade(spec.sailColor,-18));
+      sgrad.addColorStop(0.5, spec.sailColor);
+      sgrad.addColorStop(1, shade(spec.sailColor,-18));
+      c.beginPath(); c.ellipse(0,0, sailL/2, sailW/2, 0,0,Math.PI*2);
+      c.fillStyle = sgrad; c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 1; c.stroke();
+      c.strokeStyle = 'rgba(70,50,25,0.85)'; c.lineWidth = 1.6;
+      c.beginPath(); c.moveTo(0,-sailW*0.56); c.lineTo(0, sailW*0.56); c.stroke();
+      c.restore();
+
+      c.fillStyle = '#2a1a10';
+      c.beginPath(); c.arc(mx,0,2.1,0,Math.PI*2); c.fill();
+    }
+
+    // 사장(bowsprit) + 이물 장식
+    c.strokeStyle = shade(spec.hullColor,-30); c.lineWidth = 2.2;
+    c.beginPath(); c.moveTo(L/2-1,0); c.lineTo(L/2+10,0); c.stroke();
+    c.fillStyle = spec.trimColor;
+    c.beginPath(); c.arc(L/2-2, 0, 2.2, 0, Math.PI*2); c.fill();
+
+    // 깃발 (선미)
+    c.fillStyle = spec.flagColor;
+    c.beginPath();
+    c.moveTo(-L/2-2, -2); c.lineTo(-L/2-13, -6); c.lineTo(-L/2-2, -10);
+    c.closePath(); c.fill();
+    c.strokeStyle = '#0004'; c.lineWidth = 1; c.stroke();
+
+    return { img: off, w: cw, h: ch };
+  }
+
+  var spriteCache = {};
   function getSprite(type){
-    var meta = SHIP_IMG_META[type];
-    var scale = SHIP_SPECS[type].length / meta.origH;
-    var dW = scale * meta.origW;
-    var dH = scale * (meta.origH + meta.margin);
-    return {
-      img: shipImages[type],
-      dW: dW, dH: dH,
-      dx: -dW/2,
-      dy: -scale * (meta.origH/2 + meta.margin)
-    };
+    if(!spriteCache[type]) spriteCache[type] = buildShipSprite(SHIP_SPECS[type]);
+    return spriteCache[type];
   }
 
   // 아이템(화약통/구호통) 스프라이트 - 공용 통(barrel) 형태에 색상/기호만 다르게
@@ -923,9 +1003,9 @@
     if(s.x < -80 || s.x > W+80 || s.y < -80 || s.y > H+80) return;
     ctx.save();
     ctx.translate(s.x, s.y);
-    ctx.rotate(ship.heading + Math.PI/2); // 원본 그림은 뱃머리가 위쪽(-y)을 향하므로 90도 보정
+    ctx.rotate(ship.heading); // 스프라이트는 선수가 +x(오른쪽)를 향하도록 그려짐
     if(flash) ctx.globalAlpha = 0.45 + 0.55*Math.sin(elapsed*32);
-    ctx.drawImage(sp.img, sp.dx, sp.dy, sp.dW, sp.dH);
+    ctx.drawImage(sp.img, -sp.w/2, -sp.h/2, sp.w, sp.h);
     ctx.restore();
     drawHPBar(s.x, s.y, ship.spec.length*0.6, ship.spec.collisionR, ship.hp, ship.maxHp);
   }
