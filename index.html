@@ -64,29 +64,37 @@
     color:var(--parchment); border-radius:8px; padding:4px 8px; font-size:16px;
   }
 
-  /* ---------- D-PAD (십자키) ---------- */
-  #dpad{
-    position:absolute; left:20px; bottom:20px; z-index:6;
-    width:168px; height:168px;
-    display:grid; grid-template-columns:56px 56px 56px; grid-template-rows:56px 56px 56px;
+  /* ---------- 조작 버튼: 좌우 선회(왼쪽 엄지)와 속도 가감속(오른쪽 엄지, 발사 버튼 위)을 분리 배치 ---------- */
+  #steerPad{
+    position:absolute; left:16px; bottom:26px; z-index:6;
+    display:flex; gap:10px;
   }
-  .dpadBtn{
+  .steerBtn{
+    width:78px; height:96px; border-radius:14px;
     display:flex; align-items:center; justify-content:center;
     background:linear-gradient(180deg,#3a6c8a,#1c3d50); border:2px solid #ffffff55;
-    color:#eaf5fb; font-size:22px; touch-action:none; user-select:none;
+    color:#eaf5fb; font-size:30px; touch-action:none; user-select:none;
     box-shadow:inset 0 -3px 6px rgba(0,0,0,.35);
   }
-  .dpadBtn.active{
+  .steerBtn.active{
     background:linear-gradient(180deg,#ffd873,var(--gold)); color:#3a2205;
     box-shadow:inset 0 2px 4px rgba(0,0,0,.35);
   }
-  #dpadUp{ grid-column:2; grid-row:1; border-radius:12px 12px 0 0; }
-  #dpadDown{ grid-column:2; grid-row:3; border-radius:0 0 12px 12px; }
-  #dpadLeft{ grid-column:1; grid-row:2; border-radius:12px 0 0 12px; }
-  #dpadRight{ grid-column:3; grid-row:2; border-radius:0 12px 12px 0; }
-  #dpadCenter{
-    grid-column:2; grid-row:2; background:rgba(255,255,255,.08); border:2px solid #ffffff33;
-    pointer-events:none;
+
+  #throttlePad{
+    position:absolute; right:20px; bottom:128px; z-index:6;
+    display:flex; gap:8px;
+  }
+  .throttleBtn{
+    width:42px; height:42px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg,#3a6c8a,#1c3d50); border:2px solid #ffffff55;
+    color:#eaf5fb; font-size:18px; touch-action:none; user-select:none;
+    box-shadow:inset 0 -2px 4px rgba(0,0,0,.35);
+  }
+  .throttleBtn.active{
+    background:linear-gradient(180deg,#ffd873,var(--gold)); color:#3a2205;
+    box-shadow:inset 0 2px 4px rgba(0,0,0,.35);
   }
 
   /* ---------- FIRE BUTTON (양현 동시 발사) ---------- */
@@ -162,14 +170,15 @@
       <button id="muteBtn">🔊</button>
     </div>
 
-    <div id="hint">십자키: 상하=가속/감속, 좌우=선회 · 발사 버튼으로 양현 함포 동시 발사!</div>
+    <div id="hint">왼쪽 ◀▶ 선회 · 발사 버튼 위 ▲▼ 가속/감속 · 발사 버튼으로 양현 함포 동시 발사!</div>
 
-    <div id="dpad">
-      <button class="dpadBtn" id="dpadUp">▲</button>
-      <button class="dpadBtn" id="dpadLeft">◀</button>
-      <div id="dpadCenter"></div>
-      <button class="dpadBtn" id="dpadRight">▶</button>
-      <button class="dpadBtn" id="dpadDown">▼</button>
+    <div id="steerPad">
+      <button class="steerBtn" id="dpadLeft">◀</button>
+      <button class="steerBtn" id="dpadRight">▶</button>
+    </div>
+    <div id="throttlePad">
+      <button class="throttleBtn" id="dpadDown">▼</button>
+      <button class="throttleBtn" id="dpadUp">▲</button>
     </div>
     <button id="fireBtn"><div class="cd" id="fireCd"></div><span>🔥<br>발사</span></button>
 
@@ -179,7 +188,7 @@
         <h1 style="text-align:center">함포대전</h1>
         <p style="opacity:.8; text-align:center">- 대항해시대 자유 해상 포격전 -</p>
         <p>
-        · 왼쪽 <b>십자키</b>로 함선을 조종합니다. <b>▲/▼</b>를 누른 동안 속도가 오르내리고(▼를 계속 누르면 0 밑으로 내려가 후진), 버튼에서 손을 떼면 그 속도 그대로 <b>등속 운항</b>합니다. <b>◀/▶</b>는 손을 떼고 있어도 좌우로 선회할 수 있습니다.<br>
+        · 왼쪽 <b>◀/▶</b> 버튼으로 함선을 좌우로 선회합니다. 발사 버튼 위의 작은 <b>▲/▼</b> 버튼은 속도를 높이거나 낮추며(▼를 계속 누르면 0 밑으로 내려가 후진), 손을 떼면 그 속도 그대로 <b>등속 운항</b>합니다. 왼쪽 엄지는 조향, 오른쪽 엄지는 속도+발사에만 집중할 수 있도록 나눴습니다.<br>
         · 오른쪽 <b>발사</b> 버튼을 누르면 <b>양쪽 현측 대포가 동시에</b> 발사됩니다.<br>
         · 바다에 떠 있는 <b>⚡화약통</b>을 주우면 일정 시간 발사 수와 포탄 속도가 강화되고, <b>✚구호통</b>을 주우면 체력이 회복됩니다(구호통은 화약통보다 드물게 나타남).<br>
         · 체력(♥)이 모두 사라지면 목숨을 하나 잃고 그 자리에서 다시 시작합니다. 목숨을 모두 잃으면 게임 오버!<br>
@@ -492,10 +501,10 @@
     score = 0; elapsed = 0; spawnTimer = 1.0; pickupTimer = 4;
   }
 
-  /* ============== 입력: 십자키(D-pad) ==============
-     위/아래 = 가속/감속(0 아래로 내려가면 후진), 좌/우 = 선회(방향타).
-     버튼별로 독립적인 포인터를 캡처해 동시에 여러 개(예: 위+오른쪽)를
-     함께 누를 수 있습니다. */
+  /* ============== 입력: 좌우 선회 / 가속·감속 버튼 (모바일 조작성을 위해 분리 배치) ==============
+     왼쪽(◀▶) = 선회(방향타), 발사 버튼 위 작은 버튼(▲▼) = 가속/감속(0 아래로 내려가면 후진).
+     서로 다른 위치라 왼쪽/오른쪽 엄지로 동시에 조작하기 쉽고, 버튼별로 독립적인
+     포인터를 캡처해 여러 개를 함께 누를 수도 있습니다. */
   var dpad = { up:false, down:false, left:false, right:false };
   function wireDpadBtn(id, key){
     var el = document.getElementById(id);
