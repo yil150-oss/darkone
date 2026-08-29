@@ -287,20 +287,27 @@
      최고속도는 적당히 느리게 유지하면서도 방향키 입력에 대한 반응성(가속·관성 응답)은 더 빨라졌습니다. */
   /* guns=포탄 수, cooldown=재장전 시간(초), dmg=명중당 데미지.
      소형=빠른 연사·약한 한방(성가신 견제형), 대형=느린 재장전·강한 한방(신중히 거리를 벌려야 하는 위협형)으로
-     클래스별 무기 체감을 다르게 만듭니다. */
+     클래스별 무기 체감을 다르게 만듭니다.
+     bulletColor/bulletR/bulletSpeedMul=포탄 색·크기·속도 배율: 플레이어 포탄은 바다색과 잘 구분되는
+     밝은 색으로, 적 포탄은 함급별로 색/크기/속도가 다르게(소형=가볍고 빠른 흰빛 탄, 중형=표준,
+     대형=느리지만 크고 무거운 탄) 해서 날아오는 포탄만 봐도 어느 함급인지 알 수 있게 합니다. */
   var SHIP_SPECS = {
     player:  { length:82, beam:26, masts:2, guns:3, gunRows:1, quarterGallery:true, sternGallery:true,
                hullColor:'#2f5f8a', deckColor:'#3f7aad', trimColor:'#e0b84b', sailColor:'#f2e6c9', flagColor:'#3f6fb0',
-               maxSpeed:128, turnRate:1.7, accel:1.6, inertia:1.4, maxHp:6, collisionR:26, cooldown:1.5, dmg:1 },
+               maxSpeed:128, turnRate:1.7, accel:1.6, inertia:1.4, maxHp:6, collisionR:26, cooldown:1.5, dmg:1,
+               bulletColor:'#ffe066', bulletR:4.2, bulletSpeedMul:1 },
     sloop:   { length:44, beam:17, masts:1, guns:2, gunRows:1, quarterGallery:false, sternGallery:false,
                hullColor:'#7a2f2f', deckColor:'#8f3d3d', trimColor:'#c58e6c', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:146, turnRate:2.3, accel:2.0, inertia:2.0, maxHp:2, collisionR:14, score:60, cooldown:1.0, dmg:1 },
+               maxSpeed:146, turnRate:2.3, accel:2.0, inertia:2.0, maxHp:2, collisionR:14, score:60, cooldown:1.0, dmg:1,
+               bulletColor:'#eaf7ff', bulletR:3.2, bulletSpeedMul:1.3 },
     frigate: { length:86, beam:27, masts:2, guns:3, gunRows:1, quarterGallery:true, sternGallery:true,
                hullColor:'#5c2323', deckColor:'#71302f', trimColor:'#d6a25c', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:113, turnRate:1.4, accel:1.3, inertia:1.3, maxHp:4, collisionR:26, score:120, cooldown:1.5, dmg:1 },
+               maxSpeed:113, turnRate:1.4, accel:1.3, inertia:1.3, maxHp:4, collisionR:26, score:120, cooldown:1.5, dmg:1,
+               bulletColor:'#ff8a3d', bulletR:4.2, bulletSpeedMul:1 },
     galleon: { length:140, beam:50, masts:3, guns:4, gunRows:2, quarterGallery:true, sternGallery:true,
                hullColor:'#40201c', deckColor:'#552a22', trimColor:'#d4af37', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:79, turnRate:0.85, accel:0.85, inertia:0.75, maxHp:8, collisionR:42, score:220, cooldown:2.2, dmg:2 }
+               maxSpeed:79, turnRate:0.85, accel:0.85, inertia:0.75, maxHp:8, collisionR:42, score:220, cooldown:2.2, dmg:2,
+               bulletColor:'#8a1f1f', bulletR:6.2, bulletSpeedMul:0.72 }
   };
 
   /* ============== 함선 스프라이트 (Blender로 렌더링한 3D 모델 이미지) ==============
@@ -486,7 +493,7 @@
     var perpAngle = ship.heading + dir*Math.PI/2;
     var buffed = (ship===player && player.buffTime>0);
     var n = ship.spec.guns + (buffed ? BUFF_EXTRA_GUNS : 0);
-    var bSpeed = BULLET_SPEED * (buffed ? BUFF_BULLET_SPEED_MUL : 1);
+    var bSpeed = BULLET_SPEED * ship.spec.bulletSpeedMul * (buffed ? BUFF_BULLET_SPEED_MUL : 1);
     for(var i=0;i<n;i++){
       var t = n===1 ? 0.5 : i/(n-1);
       var alongOffset = (t-0.5) * ship.spec.length * 0.66;
@@ -497,7 +504,8 @@
         x:ox, y:oy,
         vx: Math.cos(perpAngle+spread)*bSpeed,
         vy: Math.sin(perpAngle+spread)*bSpeed,
-        dist:0, owner: ship, dmg: ship.spec.dmg
+        dist:0, owner: ship, dmg: ship.spec.dmg,
+        color: ship.spec.bulletColor, r: ship.spec.bulletR, smoke: ship.type==='galleon'
       });
     }
   }
@@ -774,6 +782,11 @@
       b.dist += Math.hypot(stepx,stepy);
       var hit = false;
 
+      if(b.smoke && Math.random() < dt*22){
+        particles.push({ x:b.x, y:b.y, vx:(Math.random()-0.5)*8, vy:(Math.random()-0.5)*8,
+          life:0.3+Math.random()*0.25, age:0, r:1.5+Math.random()*2, color:'#5a5048' });
+      }
+
       var targets = (b.owner===player) ? enemies : [player];
       for(var j=0;j<targets.length;j++){
         var tgt = targets[j];
@@ -1009,8 +1022,8 @@
       var s = worldToScreen(b.x, b.y);
       if(s.x<-20||s.x>W+20||s.y<-20||s.y>H+20) return;
       ctx.beginPath();
-      ctx.fillStyle = b.owner===player ? '#3a2a1a' : '#d94f3a';
-      ctx.arc(s.x,s.y,4.4,0,Math.PI*2);
+      ctx.fillStyle = b.color;
+      ctx.arc(s.x,s.y,b.r,0,Math.PI*2);
       ctx.fill();
       ctx.strokeStyle = '#00000055'; ctx.lineWidth=1; ctx.stroke();
     });
