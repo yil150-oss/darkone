@@ -191,7 +191,7 @@
         · 왼쪽 <b>◀/▶</b> 버튼으로 함선을 좌우로 선회합니다. 발사 버튼 위의 작은 <b>▲/▼</b> 버튼은 속도를 높이거나 낮추며(▼를 계속 누르면 0 밑으로 내려가 후진), 손을 떼면 그 속도 그대로 <b>등속 운항</b>합니다. 왼쪽 엄지는 조향, 오른쪽 엄지는 속도+발사에만 집중할 수 있도록 나눴습니다.<br>
         · 오른쪽 <b>발사</b> 버튼을 누르면 <b>양쪽 현측 대포가 동시에</b> 발사됩니다.<br>
         · 바다에 떠 있는 <b>⚡화약통</b>을 주우면 일정 시간 발사 수와 포탄 속도가 강화되고, <b>✚구호통</b>을 주우면 체력이 회복됩니다(구호통은 화약통보다 드물게 나타남).<br>
-        · 체력(♥)이 모두 사라지면 목숨을 하나 잃고 그 자리에서 다시 시작합니다. 목숨을 모두 잃으면 게임 오버!<br>
+        · 체력(♥)이 모두 사라지면 목숨을 하나 잃고 맵 중앙에서 다시 시작합니다(4초간 무적). 목숨을 모두 잃으면 게임 오버!<br>
         · 시간이 지날수록 적선이 더 자주, 더 강하게 몰려옵니다. <b>시간제한은 없으니</b> 목숨이 다할 때까지 최대한 버티며 점수를 쌓아 최고 기록에 도전하세요!<br>
         · 적선과 부딪히면(램) 서로 피해를 입습니다. 우측 상단 미니맵으로 넓은 바다에서 적의 위치를 확인하세요.<br>
         · 데스크톱: WASD/방향키 조종, Space(또는 E) 발사.
@@ -388,7 +388,7 @@
   var HEAL_AMOUNT = 2;
 
   var PLAYER_LIVES = 3;
-  var RESPAWN_INVULN = 2.5;
+  var RESPAWN_INVULN = 4;
 
   /* ============== 게임 상태 ============== */
   var state = 'ready'; // ready | playing | over
@@ -558,13 +558,21 @@
   }
 
   function respawnPlayer(){
+    // 사망 지점에 격침 이펙트를 먼저 남긴 뒤, 맵 중앙의 안전한 곳으로 부활시켜
+    // 죽었던 자리에 남은 적 무리 한복판에서 곧바로 다시 죽는 것을 방지합니다.
+    explode(player.x, player.y, '#ff8a5c', 26, 240);
+
     player.hp = player.maxHp;
     player.invuln = RESPAWN_INVULN;
     player.speed = 0;
     player.vel.x = 0; player.vel.y = 0;
     player.angularVelocity = 0;
+    player.x = WORLD_W/2;
+    player.y = WORLD_H/2;
+    camera.x = player.x; camera.y = player.y; // 카메라도 즉시 새 위치로 전환(서서히 패닝하지 않도록)
+
     shake = Math.max(shake, 12);
-    explode(player.x, player.y, '#ff8a5c', 26, 240);
+    explode(player.x, player.y, '#bfe4ff', 26, 220);
     sfxLifeLost();
   }
 
