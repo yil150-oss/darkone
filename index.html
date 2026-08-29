@@ -54,11 +54,12 @@
   #livesRow span.dead{ opacity:.28; filter:grayscale(1); }
   #midInfo{ text-align:center; }
   #scoreVal{ font-size:20px; }
-  #gearRow{ display:flex; align-items:center; justify-content:center; gap:2px; margin:2px 0; }
-  #gearRow span{ font-size:9px; opacity:.3; line-height:1; }
-  #gearRow span.litFwd{ opacity:1; color:var(--gold); }
-  #gearRow span.litRev{ opacity:1; color:#7fd4ff; }
-  #gearRow .gearMid{ opacity:.55; font-size:11px; margin:0 3px; }
+  #gearRow{ display:flex; align-items:center; justify-content:center; gap:4px; margin:3px 0; }
+  #gearRow .gearIcon{ font-size:9px; opacity:.5; }
+  #gearTrack{ position:relative; width:64px; height:7px; background:rgba(255,255,255,.15); border-radius:4px; overflow:hidden; }
+  #gearMid2{ position:absolute; left:50%; top:0; bottom:0; width:1px; background:rgba(255,255,255,.45); z-index:1; }
+  #gearFill{ position:absolute; top:0; bottom:0; border-radius:2px; background:var(--gold); transition:left .12s, width .12s; }
+  #gearFill.rev{ background:#7fd4ff; }
   #timeVal{ font-size:14px; opacity:.9; }
   #buffBadge{
     margin-top:4px; font-size:12px; background:rgba(224,184,75,.22); border:1px solid #e0b84baa;
@@ -169,7 +170,11 @@
       </div>
       <div id="midInfo">
         <div id="scoreVal">0</div>
-        <div id="gearRow"></div>
+        <div id="gearRow">
+          <span class="gearIcon">◀</span>
+          <div id="gearTrack"><div id="gearMid2"></div><div id="gearFill"></div></div>
+          <span class="gearIcon">▶</span>
+        </div>
         <div id="timeVal">⏱ 0초 생존</div>
         <div id="buffBadge">⚡ 강화포 0초</div>
       </div>
@@ -1067,7 +1072,7 @@
   var heartsEl = document.getElementById('hearts');
   var livesEl = document.getElementById('livesRow');
   var scoreEl = document.getElementById('scoreVal');
-  var gearRowEl = document.getElementById('gearRow');
+  var gearFillEl = document.getElementById('gearFill');
   var timeEl = document.getElementById('timeVal');
   var buffBadgeEl = document.getElementById('buffBadge');
   function updateHUD(){
@@ -1089,11 +1094,11 @@
     scoreEl.textContent = score + ' 점';
 
     var gear = state==='ready' ? 0 : player.gear;
-    var gearHtml = '';
-    for(var r=-3;r<=-1;r++){ gearHtml += '<span class="'+(gear<=r?'litRev':'')+'">●</span>'; }
-    gearHtml += '<span class="gearMid">▏</span>';
-    for(var g=1;g<=6;g++){ gearHtml += '<span class="'+(gear>=g?'litFwd':'')+'">●</span>'; }
-    gearRowEl.innerHTML = gearHtml;
+    var gearFrac = gear >= 0 ? gear/6 : gear/3; // -1(후진 최대) ~ +1(전진 최대)
+    var halfPct = Math.abs(gearFrac) * 50;
+    gearFillEl.className = gearFrac < 0 ? 'rev' : '';
+    gearFillEl.style.left = (gearFrac >= 0 ? 50 : 50-halfPct) + '%';
+    gearFillEl.style.width = halfPct + '%';
 
     timeEl.textContent = '⏱ ' + Math.floor(elapsed) + '초 생존';
     if(player.buffTime > 0){
