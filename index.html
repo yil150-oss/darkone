@@ -442,7 +442,7 @@
     player.buffTime = 0;
     player.lives = PLAYER_LIVES;
     player.gear = 0;
-    gearPrevUp = false; gearPrevDown = false;
+    gearPrevUp = false; gearPrevDown = false; gearUpTimer = Infinity; gearDownTimer = Infinity;
     camera.x = player.x; camera.y = player.y;
     bullets = [];
     enemies = [];
@@ -497,12 +497,32 @@
   }
 
   /* ============== 속도 기어(전진 1~6단 / 후진 -1~-3단) ==============
-     버튼을 누르고 있는 동안 계속 반응하지 않고, 누르는 순간(엣지)마다 1단씩만 바뀝니다.
-     기어가 곧 목표 속도이므로, 손을 떼도 그 기어의 속도를 계속 유지합니다. */
-  var gearPrevUp = false, gearPrevDown = false;
-  function stepGear(up, down){
-    if(up && !gearPrevUp) player.gear = Math.min(6, player.gear+1);
-    if(down && !gearPrevDown) player.gear = Math.max(-3, player.gear-1);
+     짧게 누르면 1단만 바뀌고, 누른 채로 있으면 처음엔 GEAR_REPEAT_DELAY 후,
+     그다음부터는 GEAR_REPEAT_RATE 간격으로 계속 자동 증가/감소합니다(오토리핏).
+     기어가 곧 목표 속도이므로, 손을 떼면 그 기어의 속도를 그대로 유지합니다. */
+  var GEAR_REPEAT_DELAY = 0.35, GEAR_REPEAT_RATE = 0.12;
+  var gearPrevUp = false, gearPrevDown = false, gearUpTimer = Infinity, gearDownTimer = Infinity;
+  function stepGear(up, down, dt){
+    if(up && !gearPrevUp){
+      player.gear = Math.min(6, player.gear+1);
+      gearUpTimer = GEAR_REPEAT_DELAY;
+    } else if(up){
+      gearUpTimer -= dt;
+      if(gearUpTimer <= 0){ player.gear = Math.min(6, player.gear+1); gearUpTimer = GEAR_REPEAT_RATE; }
+    } else {
+      gearUpTimer = Infinity;
+    }
+
+    if(down && !gearPrevDown){
+      player.gear = Math.max(-3, player.gear-1);
+      gearDownTimer = GEAR_REPEAT_DELAY;
+    } else if(down){
+      gearDownTimer -= dt;
+      if(gearDownTimer <= 0){ player.gear = Math.max(-3, player.gear-1); gearDownTimer = GEAR_REPEAT_RATE; }
+    } else {
+      gearDownTimer = Infinity;
+    }
+
     gearPrevUp = up; gearPrevDown = down;
     return player.gear >= 0 ? player.gear/6 : player.gear/3;
   }
@@ -600,7 +620,7 @@
     player.invuln = RESPAWN_INVULN;
     player.speed = 0;
     player.gear = 0;
-    gearPrevUp = false; gearPrevDown = false;
+    gearPrevUp = false; gearPrevDown = false; gearUpTimer = Infinity; gearDownTimer = Infinity;
     player.vel.x = 0; player.vel.y = 0;
     player.angularVelocity = 0;
     player.x = WORLD_W/2;
@@ -749,7 +769,7 @@
     if(player.buffTime>0) player.buffTime = Math.max(0, player.buffTime-dt);
 
     var rt = getRudderThrottle();
-    var throttle = stepGear(rt.up, rt.down);
+    var throttle = stepGear(rt.up, rt.down, dt);
     updateShipPhysics(player, rt.rudder, throttle, dt);
 
     camera.x += (player.x - camera.x) * Math.min(1, dt*3.2);
