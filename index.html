@@ -288,16 +288,16 @@
   var SHIP_SPECS = {
     player:  { length:82, beam:26, masts:2, guns:3, gunRows:1, quarterGallery:true, sternGallery:true,
                hullColor:'#2f5f8a', deckColor:'#3f7aad', trimColor:'#e0b84b', sailColor:'#f2e6c9', flagColor:'#3f6fb0',
-               maxSpeed:128, turnRate:1.7, accel:1.6, inertia:2.8, maxHp:6, collisionR:26 },
+               maxSpeed:128, turnRate:1.7, accel:1.6, inertia:1.4, maxHp:6, collisionR:26 },
     sloop:   { length:44, beam:17, masts:1, guns:2, gunRows:1, quarterGallery:false, sternGallery:false,
                hullColor:'#7a2f2f', deckColor:'#8f3d3d', trimColor:'#c58e6c', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:146, turnRate:2.3, accel:2.0, inertia:3.6, maxHp:2, collisionR:14, score:60 },
+               maxSpeed:146, turnRate:2.3, accel:2.0, inertia:2.0, maxHp:2, collisionR:14, score:60 },
     frigate: { length:86, beam:27, masts:2, guns:3, gunRows:1, quarterGallery:true, sternGallery:true,
                hullColor:'#5c2323', deckColor:'#71302f', trimColor:'#d6a25c', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:113, turnRate:1.4, accel:1.3, inertia:2.5, maxHp:4, collisionR:26, score:120 },
+               maxSpeed:113, turnRate:1.4, accel:1.3, inertia:1.3, maxHp:4, collisionR:26, score:120 },
     galleon: { length:140, beam:50, masts:3, guns:4, gunRows:2, quarterGallery:true, sternGallery:true,
                hullColor:'#40201c', deckColor:'#552a22', trimColor:'#d4af37', sailColor:'#e9d7bd', flagColor:'#8a2020',
-               maxSpeed:79, turnRate:0.85, accel:0.85, inertia:1.6, maxHp:8, collisionR:42, score:220 }
+               maxSpeed:79, turnRate:0.85, accel:0.85, inertia:0.75, maxHp:8, collisionR:42, score:220 }
   };
 
   /* ============== 함선 스프라이트 (Blender로 렌더링한 3D 모델 이미지) ==============
@@ -520,9 +520,9 @@
     throttle = Math.max(-1, Math.min(1, throttle));
 
     var speedRatio = Math.abs(ship.speed) / spec.maxSpeed;
-    var turnEff = 0.5 + Math.min(1, speedRatio*1.1) * 0.7;
+    var turnEff = 0.22 + Math.min(1, speedRatio*1.15) * 0.85; // 저속에서는 조향력이 크게 떨어짐(진짜 범선처럼)
     var targetAngVel = rudder * spec.turnRate * turnEff;
-    ship.angularVelocity += (targetAngVel - ship.angularVelocity) * Math.min(1, dt*6.5);
+    ship.angularVelocity += (targetAngVel - ship.angularVelocity) * Math.min(1, dt*2.2); // 회전이 서서히 붙고 서서히 멎음
     ship.heading += ship.angularVelocity * dt;
 
     // cruise 모드(플레이어 전용): 상하키를 누르고 있을 때만 속도가 바뀌고,
