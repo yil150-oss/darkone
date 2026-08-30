@@ -437,9 +437,9 @@
   var RELOAD_BUFF_DURATION = 10;
   var RELOAD_BUFF_MUL = 0.4; // 재장전 시간을 40%로 단축(60% 감소)
   var SHIELD_DURATION = 6;
-  var PICKUP_MAX = 3;
-  var PICKUP_INTERVAL = 13;
-  var PICKUP_LIFETIME = 22;
+  var PICKUP_MAX = 4;
+  var PICKUP_INTERVAL = 9;
+  var PICKUP_LIFETIME = 38;
   var HEAL_AMOUNT = 2;
   var MAX_LIVES = 5;
   // 아이템 종류별 등장 확률(합 100): 화약통/구호통/급속장전/방어막은 흔하게,
@@ -840,7 +840,7 @@
     pickupTimer -= dt;
     if(pickupTimer <= 0 && pickups.length < PICKUP_MAX){
       spawnPickup();
-      pickupTimer = PICKUP_INTERVAL + Math.random()*4;
+      pickupTimer = PICKUP_INTERVAL + Math.random()*3;
     }
     for(var pi=pickups.length-1; pi>=0; pi--){
       var pu = pickups[pi];
