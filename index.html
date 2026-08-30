@@ -54,12 +54,6 @@
   #livesRow span.dead{ opacity:.28; filter:grayscale(1); }
   #midInfo{ text-align:center; }
   #scoreVal{ font-size:20px; }
-  #gearRow{ display:flex; align-items:center; justify-content:center; gap:4px; margin:3px 0; }
-  #gearRow .gearIcon{ font-size:9px; opacity:.5; }
-  #gearTrack{ position:relative; width:64px; height:7px; background:rgba(255,255,255,.15); border-radius:4px; overflow:hidden; }
-  #gearMid2{ position:absolute; left:50%; top:0; bottom:0; width:1px; background:rgba(255,255,255,.45); z-index:1; }
-  #gearFill{ position:absolute; top:0; bottom:0; border-radius:2px; background:var(--gold); transition:left .12s, width .12s; }
-  #gearFill.rev{ background:#7fd4ff; }
   #timeVal{ font-size:14px; opacity:.9; }
   #buffBadge{
     margin-top:4px; font-size:12px; background:rgba(224,184,75,.22); border:1px solid #e0b84baa;
@@ -89,7 +83,19 @@
 
   #throttlePad{
     position:absolute; right:20px; bottom:128px; z-index:6;
-    display:flex; gap:8px;
+    display:flex; align-items:center; gap:8px;
+  }
+  #throttleBtns{ display:flex; flex-direction:column; gap:8px; }
+  #speedGauge{ position:relative; width:16px; height:92px; }
+  #speedGaugeSegs{
+    display:flex; flex-direction:column; width:100%; height:100%;
+    border-radius:4px; overflow:hidden; border:1px solid #ffffff66;
+  }
+  #speedGaugeSegs div{ flex:1 1 0; }
+  #speedGaugeMarker{
+    position:absolute; left:-3px; right:-3px; height:10%;
+    border:2px solid #fff; box-shadow:0 0 0 1px #000; border-radius:3px;
+    pointer-events:none; transition:top .12s;
   }
   .throttleBtn{
     width:42px; height:42px; border-radius:50%;
@@ -170,11 +176,6 @@
       </div>
       <div id="midInfo">
         <div id="scoreVal">0</div>
-        <div id="gearRow">
-          <span class="gearIcon">◀</span>
-          <div id="gearTrack"><div id="gearMid2"></div><div id="gearFill"></div></div>
-          <span class="gearIcon">▶</span>
-        </div>
         <div id="timeVal">⏱ 0초 생존</div>
         <div id="buffBadge">⚡ 강화포 0초</div>
       </div>
@@ -188,8 +189,14 @@
       <button class="steerBtn" id="dpadRight">▶</button>
     </div>
     <div id="throttlePad">
-      <button class="throttleBtn" id="dpadDown">−</button>
-      <button class="throttleBtn" id="dpadUp">+</button>
+      <div id="speedGauge">
+        <div id="speedGaugeSegs"></div>
+        <div id="speedGaugeMarker"></div>
+      </div>
+      <div id="throttleBtns">
+        <button class="throttleBtn" id="dpadUp">+</button>
+        <button class="throttleBtn" id="dpadDown">−</button>
+      </div>
     </div>
     <button id="fireBtn"><div class="cd" id="fireCd"></div><span>🔥<br>발사</span></button>
 
@@ -1092,9 +1099,21 @@
   var heartsEl = document.getElementById('hearts');
   var livesEl = document.getElementById('livesRow');
   var scoreEl = document.getElementById('scoreVal');
-  var gearFillEl = document.getElementById('gearFill');
   var timeEl = document.getElementById('timeVal');
   var buffBadgeEl = document.getElementById('buffBadge');
+
+  /* 속도 게이지: 위(주황, 전진 6단)에서 아래(파랑, 후진 -3단)로 이어지는 10칸 그라데이션.
+     현재 기어 칸은 흰/검 테두리 마커로 표시합니다. */
+  var GEAR_GAUGE_COLORS = ['#ff7d33','#ff9a52','#ffb679','#ffd2a0','#ffe8c8','#fff3e0','#e3e9f7','#b9c8ef','#90a8e4','#6c86d6'];
+  var speedGaugeSegsEl = document.getElementById('speedGaugeSegs');
+  var speedGaugeMarkerEl = document.getElementById('speedGaugeMarker');
+  (function initSpeedGauge(){
+    var html = '';
+    for(var i=0;i<GEAR_GAUGE_COLORS.length;i++){
+      html += '<div style="background:'+GEAR_GAUGE_COLORS[i]+'"></div>';
+    }
+    speedGaugeSegsEl.innerHTML = html;
+  })();
   function updateHUD(){
     var hp = state==='ready' ? SHIP_SPECS.player.maxHp : Math.max(0,player.hp);
     var maxHp = SHIP_SPECS.player.maxHp;
@@ -1114,11 +1133,8 @@
     scoreEl.textContent = score + ' 점';
 
     var gear = state==='ready' ? 0 : player.gear;
-    var gearFrac = gear >= 0 ? gear/6 : gear/3; // -1(후진 최대) ~ +1(전진 최대)
-    var halfPct = Math.abs(gearFrac) * 50;
-    gearFillEl.className = gearFrac < 0 ? 'rev' : '';
-    gearFillEl.style.left = (gearFrac >= 0 ? 50 : 50-halfPct) + '%';
-    gearFillEl.style.width = halfPct + '%';
+    var gearIdx = 6 - gear; // 0(전진 6단, 맨 위) ~ 9(후진 -3단, 맨 아래)
+    speedGaugeMarkerEl.style.top = (gearIdx * (100/GEAR_GAUGE_COLORS.length)) + '%';
 
     timeEl.textContent = '⏱ ' + Math.floor(elapsed) + '초 생존';
     if(player.buffTime > 0){
