@@ -304,7 +304,7 @@
     }
     return noiseBuf;
   }
-  function noiseBurst(dur, filterType, filterFreq, vol, delay, q){
+  function noiseBurst(dur, filterType, filterFreq, vol, delay, q, attack){
     if(muted) return;
     var ac = audioCtx();
     if(!ac) return;
@@ -318,17 +318,20 @@
       if(q) filt.Q.setValueAtTime(q, t0);
       var gain = ac.createGain();
       gain.gain.setValueAtTime(0.0001, t0);
-      gain.gain.linearRampToValueAtTime(vol||0.2, t0+0.008);
+      gain.gain.linearRampToValueAtTime(vol||0.2, t0+(attack!=null?attack:0.008));
       gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
       src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
       src.start(t0); src.stop(t0+dur+0.05);
     }catch(e){}
   }
   function sfxFire(){
-    noiseBurst(0.045, 'highpass', 2200, 0.22, 0, 0.8);    // 점화 크랙
-    noiseBurst(0.38, 'lowpass', 900, 0.5, 0.005, 0.7);    // 주 포성
-    beep(65, 0.28, 'sine', 0.22, 0.01);                   // 저음 진동
-    noiseBurst(0.55, 'lowpass', 300, 0.28, 0.03);         // 잔향 럼블
+    // 순수 톤(사인파) 없이 노이즈만 사용, 필터 공명(Q)을 낮게 유지해 "북소리"처럼
+    // 튜닝된 울림이 나지 않게 하고, 물 위로 퍼지는 반향을 두 겹 얹어 저음을 묵직하게 냄.
+    noiseBurst(0.02, 'highpass', 1300, 0.4, 0, 0.3, 0.001);    // 즉각적인 크랙
+    noiseBurst(0.4, 'lowpass', 500, 0.62, 0.004, 0.25, 0.003); // 몸통
+    noiseBurst(0.7, 'lowpass', 70, 0.55, 0.008, 0.2, 0.005);   // 저음 무게
+    noiseBurst(0.55, 'lowpass', 170, 0.28, 0.15, 0.2, 0.02);   // 1차 반향
+    noiseBurst(0.8, 'lowpass', 90, 0.2, 0.34, 0.15, 0.03);     // 2차 반향
   }
   function sfxHit(){ beep(500,0.08,'square',0.1); }
   function sfxSink(){ beep(180,0.35,'sawtooth',0.15); beep(90,0.4,'sawtooth',0.12,0.05); }
