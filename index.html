@@ -291,7 +291,45 @@
       osc.start(t0); osc.stop(t0+dur+0.05);
     }catch(e){}
   }
-  function sfxFire(){ beep(220,0.12,'square',0.12); beep(140,0.18,'sawtooth',0.08,0.02); beep(110,0.2,'sawtooth',0.06,0.04); }
+
+  // 화이트노이즈 버퍼(재사용) + 필터로 다듬어 재생하는 노이즈 파열음.
+  // 대포/폭발처럼 오실레이터 톤만으로는 낼 수 없는 "펑/쾅" 소리에 사용합니다.
+  var noiseBuf = null;
+  function getNoiseBuffer(ac){
+    if(!noiseBuf){
+      var len = ac.sampleRate * 1;
+      noiseBuf = ac.createBuffer(1, len, ac.sampleRate);
+      var data = noiseBuf.getChannelData(0);
+      for(var i=0;i<len;i++) data[i] = Math.random()*2-1;
+    }
+    return noiseBuf;
+  }
+  function noiseBurst(dur, filterType, filterFreq, vol, delay, q){
+    if(muted) return;
+    var ac = audioCtx();
+    if(!ac) return;
+    try{
+      var t0 = ac.currentTime + (delay||0);
+      var src = ac.createBufferSource();
+      src.buffer = getNoiseBuffer(ac);
+      var filt = ac.createBiquadFilter();
+      filt.type = filterType || 'lowpass';
+      filt.frequency.setValueAtTime(filterFreq, t0);
+      if(q) filt.Q.setValueAtTime(q, t0);
+      var gain = ac.createGain();
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.linearRampToValueAtTime(vol||0.2, t0+0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
+      src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
+      src.start(t0); src.stop(t0+dur+0.05);
+    }catch(e){}
+  }
+  function sfxFire(){
+    noiseBurst(0.045, 'highpass', 2200, 0.22, 0, 0.8);    // 점화 크랙
+    noiseBurst(0.38, 'lowpass', 900, 0.5, 0.005, 0.7);    // 주 포성
+    beep(65, 0.28, 'sine', 0.22, 0.01);                   // 저음 진동
+    noiseBurst(0.55, 'lowpass', 300, 0.28, 0.03);         // 잔향 럼블
+  }
   function sfxHit(){ beep(500,0.08,'square',0.1); }
   function sfxSink(){ beep(180,0.35,'sawtooth',0.15); beep(90,0.4,'sawtooth',0.12,0.05); }
   function sfxDamage(){ beep(110,0.3,'sawtooth',0.18); }
