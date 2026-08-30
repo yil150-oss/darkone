@@ -59,6 +59,14 @@
     margin-top:4px; font-size:12px; background:rgba(224,184,75,.22); border:1px solid #e0b84baa;
     border-radius:8px; padding:2px 8px; display:none; color:#ffe6a8;
   }
+  #reloadBadge{
+    margin-top:4px; font-size:12px; background:rgba(79,210,232,.22); border:1px solid #4fd2e8aa;
+    border-radius:8px; padding:2px 8px; display:none; color:#c6f4ff;
+  }
+  #shieldBadge{
+    margin-top:4px; font-size:12px; background:rgba(165,117,232,.22); border:1px solid #a575e8aa;
+    border-radius:8px; padding:2px 8px; display:none; color:#e6d9ff;
+  }
   #muteBtn{
     pointer-events:auto; background:rgba(0,0,0,.35); border:1px solid #ffffff55;
     color:var(--parchment); border-radius:8px; padding:4px 8px; font-size:16px;
@@ -178,6 +186,8 @@
         <div id="scoreVal">0</div>
         <div id="timeVal">⏱ 0초 생존</div>
         <div id="buffBadge">⚡ 강화포 0초</div>
+        <div id="reloadBadge">⏩ 급속장전 0초</div>
+        <div id="shieldBadge">⛨ 방어막 0초</div>
       </div>
       <button id="muteBtn">🔊</button>
     </div>
@@ -290,6 +300,9 @@
   function sfxPowerup(){ [660,880,1100].forEach(function(f,i){ beep(f,0.14,'square',0.12,i*0.07); }); }
   function sfxHeal(){ beep(784,0.13,'sine',0.14); beep(988,0.16,'sine',0.13,0.09); }
   function sfxLifeLost(){ beep(200,0.22,'sawtooth',0.17); beep(120,0.28,'sawtooth',0.15,0.16); }
+  function sfxReload(){ beep(700,0.07,'square',0.11); beep(900,0.07,'square',0.11,0.06); beep(1150,0.09,'square',0.11,0.12); }
+  function sfxShield(){ beep(300,0.28,'sine',0.13); beep(450,0.24,'sine',0.11,0.08); }
+  function sfxExtraLife(){ [659,880,1319,1568].forEach(function(f,i){ beep(f,0.18,'square',0.13,i*0.1); }); }
 
   var muteBtn = document.getElementById('muteBtn');
   function refreshMuteBtn(){ muteBtn.textContent = muted ? '🔇' : '🔊'; }
@@ -386,7 +399,7 @@
     c.fillText(symbol, 0, -1);
     return { img: off, w:s, h:s };
   }
-  var powderSprite = null, healSprite = null;
+  var powderSprite = null, healSprite = null, reloadSprite = null, shieldSprite = null, lifeSprite = null;
   function getPowderSprite(){
     if(!powderSprite) powderSprite = buildItemSprite('#7a4f2b','#a5713e','#6b431f','⚡','#ffd873');
     return powderSprite;
@@ -395,6 +408,19 @@
     if(!healSprite) healSprite = buildItemSprite('#2f6b45','#3f8f5a','#234d31','✚','#eafff0');
     return healSprite;
   }
+  function getReloadSprite(){
+    if(!reloadSprite) reloadSprite = buildItemSprite('#1f5f6b','#2f8fa0','#173f47','»','#eafcff');
+    return reloadSprite;
+  }
+  function getShieldSprite(){
+    if(!shieldSprite) shieldSprite = buildItemSprite('#4a2f7a','#6b45a5','#331f57','⛨','#f0e6ff');
+    return shieldSprite;
+  }
+  function getLifeSprite(){
+    if(!lifeSprite) lifeSprite = buildItemSprite('#7a1f1f','#c9445a','#4a1414','★','#fff0d0');
+    return lifeSprite;
+  }
+  var PICKUP_SPRITES = { heal:getHealSprite, power:getPowderSprite, reload:getReloadSprite, shield:getShieldSprite, life:getLifeSprite };
 
   /* ============== 게임 상수 ============== */
   var DIFFICULTY_RAMP = 60; // 초반 난이도가 이 시간(초) 동안 올라간 뒤에도 서서히 계속 어려워짐
@@ -408,11 +434,19 @@
   var BUFF_DURATION = 14;
   var BUFF_EXTRA_GUNS = 2;
   var BUFF_BULLET_SPEED_MUL = 1.4;
+  var RELOAD_BUFF_DURATION = 10;
+  var RELOAD_BUFF_MUL = 0.4; // 재장전 시간을 40%로 단축(60% 감소)
+  var SHIELD_DURATION = 6;
   var PICKUP_MAX = 3;
   var PICKUP_INTERVAL = 13;
   var PICKUP_LIFETIME = 22;
-  var PICKUP_HEAL_CHANCE = 0.3; // 구호통 생성 확률 (화약통보다 낮게)
   var HEAL_AMOUNT = 2;
+  var MAX_LIVES = 5;
+  // 아이템 종류별 등장 확률(합 100): 화약통/구호통/급속장전/방어막은 흔하게,
+  // 여벌 목숨은 희귀하게
+  var PICKUP_WEIGHTS = [
+    ['heal', 0.25], ['power', 0.25], ['reload', 0.25], ['shield', 0.20], ['life', 0.05]
+  ];
 
   var PLAYER_LIVES = 3;
   var RESPAWN_INVULN = 4;
@@ -447,6 +481,8 @@
     WORLD_H = Math.max(600, H) * WORLD_SCALE;
     player = newShip('player', WORLD_W*0.5, WORLD_H*0.5, -Math.PI/2);
     player.buffTime = 0;
+    player.reloadBuffTime = 0;
+    player.shieldTime = 0;
     player.lives = PLAYER_LIVES;
     player.gear = 0;
     gearPrevUp = false; gearPrevDown = false; gearUpTimer = Infinity; gearDownTimer = Infinity;
@@ -562,7 +598,8 @@
   }
   function fireBothSides(ship){
     if(state !== 'playing' || !ship.alive || ship.cd > 0) return;
-    ship.cd = ship.spec.cooldown;
+    var reloadBuffed = (ship === player && player.reloadBuffTime > 0);
+    ship.cd = ship.spec.cooldown * (reloadBuffed ? RELOAD_BUFF_MUL : 1);
     fireSide(ship,'left');
     fireSide(ship,'right');
     if(ship === player) sfxFire();
@@ -748,8 +785,15 @@
     var m = 60;
     x = Math.max(m, Math.min(WORLD_W-m, x));
     y = Math.max(m, Math.min(WORLD_H-m, y));
-    var kind = Math.random() < PICKUP_HEAL_CHANCE ? 'heal' : 'power';
-    pickups.push({x:x,y:y,age:0,bob:Math.random()*Math.PI*2,kind:kind});
+    pickups.push({x:x,y:y,age:0,bob:Math.random()*Math.PI*2,kind:pickPickupKind()});
+  }
+  function pickPickupKind(){
+    var r = Math.random(), acc = 0;
+    for(var i=0;i<PICKUP_WEIGHTS.length;i++){
+      acc += PICKUP_WEIGHTS[i][1];
+      if(r < acc) return PICKUP_WEIGHTS[i][0];
+    }
+    return PICKUP_WEIGHTS[PICKUP_WEIGHTS.length-1][0];
   }
 
   /* ============== 파티클 ============== */
@@ -774,6 +818,8 @@
     if(player.cd>0) player.cd -= dt;
     if(player.invuln>0) player.invuln -= dt;
     if(player.buffTime>0) player.buffTime = Math.max(0, player.buffTime-dt);
+    if(player.reloadBuffTime>0) player.reloadBuffTime = Math.max(0, player.reloadBuffTime-dt);
+    if(player.shieldTime>0) player.shieldTime = Math.max(0, player.shieldTime-dt);
 
     var rt = getRudderThrottle();
     var throttle = stepGear(rt.up, rt.down, dt);
@@ -807,10 +853,23 @@
           player.hp = Math.min(player.maxHp, player.hp + HEAL_AMOUNT);
           explode(pu.x,pu.y,'#5fd66b',18,150);
           sfxHeal();
-        } else {
+        } else if(pu.kind === 'power'){
           player.buffTime = BUFF_DURATION;
           explode(pu.x,pu.y,'#ffd873',18,160);
           sfxPowerup();
+        } else if(pu.kind === 'reload'){
+          player.reloadBuffTime = RELOAD_BUFF_DURATION;
+          explode(pu.x,pu.y,'#4fd2e8',18,160);
+          sfxReload();
+        } else if(pu.kind === 'shield'){
+          player.shieldTime = SHIELD_DURATION;
+          player.invuln = Math.max(player.invuln, SHIELD_DURATION);
+          explode(pu.x,pu.y,'#a575e8',18,160);
+          sfxShield();
+        } else if(pu.kind === 'life'){
+          player.lives = Math.min(MAX_LIVES, player.lives + 1);
+          explode(pu.x,pu.y,'#ff5a6e',24,190);
+          sfxExtraLife();
         }
       }
     }
@@ -908,7 +967,8 @@
     }
 
     // 쿨다운 UI
-    fireCdEl.style.setProperty('--p', Math.max(0, player.cd/player.spec.cooldown));
+    var curMaxCd = player.spec.cooldown * (player.reloadBuffTime>0 ? RELOAD_BUFF_MUL : 1);
+    fireCdEl.style.setProperty('--p', Math.max(0, player.cd/curMaxCd));
 
     // 종료 조건: 목숨을 모두 잃었을 때만 게임 종료 (시간제한 없는 엔드리스 서바이벌)
     if(player.hp <= 0 && player.alive){
@@ -992,7 +1052,7 @@
     pickups.forEach(function(pu){
       var s = worldToScreen(pu.x, pu.y);
       if(s.x < -40 || s.x > W+40 || s.y < -40 || s.y > H+40) return;
-      var sp = pu.kind === 'heal' ? getHealSprite() : getPowderSprite();
+      var sp = PICKUP_SPRITES[pu.kind]();
       var bob = Math.sin(elapsed*3 + pu.bob) * 4;
       var warn = pu.age > PICKUP_LIFETIME-5 ? (Math.sin(elapsed*14)>0?0.35:1) : 1;
       ctx.save();
@@ -1101,6 +1161,8 @@
   var scoreEl = document.getElementById('scoreVal');
   var timeEl = document.getElementById('timeVal');
   var buffBadgeEl = document.getElementById('buffBadge');
+  var reloadBadgeEl = document.getElementById('reloadBadge');
+  var shieldBadgeEl = document.getElementById('shieldBadge');
 
   /* 속도 게이지: 위(주황, 전진 6단)에서 아래(파랑, 후진 -3단)로 이어지는 10칸 그라데이션.
      현재 기어 칸은 흰/검 테두리 마커로 표시합니다. */
@@ -1125,7 +1187,7 @@
 
     var lives = state==='ready' ? PLAYER_LIVES : Math.max(0,player.lives);
     var livesHtml = '';
-    for(var l=0;l<PLAYER_LIVES;l++){
+    for(var l=0;l<Math.max(PLAYER_LIVES,lives);l++){
       livesHtml += '<span class="'+(l<lives?'':'dead')+'">⛵</span>';
     }
     livesEl.innerHTML = livesHtml;
@@ -1142,6 +1204,18 @@
       buffBadgeEl.textContent = '⚡ 강화포 ' + Math.ceil(player.buffTime) + '초';
     } else {
       buffBadgeEl.style.display = 'none';
+    }
+    if(player.reloadBuffTime > 0){
+      reloadBadgeEl.style.display = 'inline-block';
+      reloadBadgeEl.textContent = '⏩ 급속장전 ' + Math.ceil(player.reloadBuffTime) + '초';
+    } else {
+      reloadBadgeEl.style.display = 'none';
+    }
+    if(player.shieldTime > 0){
+      shieldBadgeEl.style.display = 'inline-block';
+      shieldBadgeEl.textContent = '⛨ 방어막 ' + Math.ceil(player.shieldTime) + '초';
+    } else {
+      shieldBadgeEl.style.display = 'none';
     }
   }
 
